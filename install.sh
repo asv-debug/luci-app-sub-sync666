@@ -7,12 +7,14 @@ RAW="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
 VIEW_DIR="/www/luci-static/resources/view/sub_sync"
 VIEW_FILE="${VIEW_DIR}/sub_sync.js"
 BIN_FILE="/usr/bin/sub-sync"
-MENU_FILE="/usr/share/luci/menu.d/luci-app-sub-sync.json"
 ACL_FILE="/usr/share/rpcd/acl.d/luci-app-sub-sync.json"
+
+PODKOP_MENU="/usr/share/luci/menu.d/luci-app-podkop.json"
+PODKOP_BAK="/usr/share/luci/menu.d/luci-app-podkop.json.bak.subsync"
 
 echo ""
 echo "========================================="
-echo "  Podkop Sub Sync — safe install"
+echo "  Podkop Sub Sync — integrated install"
 echo "========================================="
 echo ""
 
@@ -26,9 +28,16 @@ if [ ! -f /etc/config/podkop ]; then
     exit 1
 fi
 
+if [ ! -f "$PODKOP_MENU" ]; then
+    echo "ОШИБКА: не найдено меню Podkop: $PODKOP_MENU"
+    exit 1
+fi
+
 echo "→ Бэкап перед установкой..."
 BACKUP="/root/luci-app-sub-sync-before-install-$(date +%Y%m%d-%H%M%S).tar.gz"
 tar -czf "$BACKUP" -C / \
+  usr/share/luci/menu.d/luci-app-podkop.json \
+  usr/share/luci/menu.d/luci-app-podkop.json.bak.subsync \
   usr/share/luci/menu.d/luci-app-sub-sync.json \
   usr/share/rpcd/acl.d/luci-app-sub-sync.json \
   www/luci-static/resources/view/sub_sync \
@@ -36,6 +45,15 @@ tar -czf "$BACKUP" -C / \
   etc/sub-sync \
   2>/dev/null || true
 echo "  ✓ Бэкап: $BACKUP"
+
+echo "→ Сохранение родного меню Podkop..."
+if grep -q 'sub_sync/sub_sync' "$PODKOP_MENU" 2>/dev/null; then
+    echo "  ! Podkop уже переключён на Sub Sync view"
+else
+    cp -f "$PODKOP_MENU" "$PODKOP_BAK"
+    chmod 644 "$PODKOP_BAK"
+    echo "  ✓ Родное меню сохранено: $PODKOP_BAK"
+fi
 
 echo "→ Проверка зависимостей..."
 opkg update >/dev/null 2>&1 || true
@@ -60,26 +78,7 @@ sed -i 's/\r$//' "$BIN_FILE" "$VIEW_FILE" 2>/dev/null || true
 chmod 755 "$BIN_FILE"
 chmod 644 "$VIEW_FILE"
 
-echo "→ Создание LuCI menu..."
-cat > "$MENU_FILE" <<'MENUEOF'
-{
-    "admin/services/sub-sync": {
-        "title": "Sub Sync",
-        "order": 44,
-        "action": {
-            "type": "view",
-            "path": "sub_sync/sub_sync"
-        },
-        "depends": {
-            "acl": [ "luci-app-sub-sync" ],
-            "uci": { "podkop": true }
-        }
-    }
-}
-MENUEOF
-chmod 644 "$MENU_FILE"
-
-echo "→ Создание ACL..."
+echo "→ Создание ACL Sub Sync..."
 cat > "$ACL_FILE" <<'ACLEOF'
 {
     "luci-app-sub-sync": {
@@ -101,6 +100,28 @@ cat > "$ACL_FILE" <<'ACLEOF'
 ACLEOF
 chmod 644 "$ACL_FILE"
 
+echo "→ Переключение Services → Podkop на интегрированный Sub Sync view..."
+cat > "$PODKOP_MENU" <<'MENUEOF'
+{
+    "admin/services/podkop": {
+        "title": "Podkop",
+        "order": 42,
+        "action": {
+            "type": "view",
+            "path": "sub_sync/sub_sync"
+        },
+        "depends": {
+            "acl": [ "luci-app-podkop", "luci-app-sub-sync" ],
+            "uci": { "podkop": true }
+        }
+    }
+}
+MENUEOF
+chmod 644 "$PODKOP_MENU"
+
+echo "→ Удаление отдельного пункта Services → Sub Sync, если был..."
+rm -f /usr/share/luci/menu.d/luci-app-sub-sync.json
+
 echo "→ Очистка LuCI кэша..."
 rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev/null || true
 touch /usr/lib/opkg/status 2>/dev/null || touch /lib/apk/db/installed 2>/dev/null || true
@@ -111,11 +132,11 @@ echo "→ Перезапуск LuCI..."
 
 echo ""
 echo "========================================="
-echo "  Sub Sync установлен безопасно"
+echo "  Sub Sync встроен в Podkop"
 echo "========================================="
 echo ""
-echo "  Страница:"
-echo "  Services → Sub Sync"
+echo "  Открывать:"
+echo "  Services → Podkop"
 echo ""
 echo "  Бэкап:"
 echo "  $BACKUP"
