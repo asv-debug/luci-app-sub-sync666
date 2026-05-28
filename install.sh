@@ -92,7 +92,7 @@ subsync_cleanup_stale_luci_js_v118b "install"
 
 
 
-REPO="${SUBSYNC_REPO:-kzolotarev95/luci-app-sub-syncv2}"
+REPO="${SUBSYNC_REPO:-kzolotarev95/luci-app-sub-sync666}"
 BRANCH="${SUBSYNC_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
 
