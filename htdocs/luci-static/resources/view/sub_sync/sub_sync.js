@@ -1111,6 +1111,75 @@ syncAllBtnStates(sec3);
                             singboxConsoleBodyV81
                     ]);
 
+                    /* SUBSYNC_DONATERS_PUBLIC_CARDS_V134_COMPACT_CARDS */
+                    var donatersPublicListV128 = E('div', {
+                            'class': 'ss-donaters-grid-v134'
+                    }, []);
+
+                    function ssClearDonatersPublicV128() {
+                            while (donatersPublicListV128.firstChild)
+                                    donatersPublicListV128.removeChild(donatersPublicListV128.firstChild);
+                    }
+
+                    function ssRenderDonatersPublicV128(data) {
+                            ssClearDonatersPublicV128();
+
+                            var items = Array.isArray(data && data.items) ? data.items : [];
+
+                            for (var i = 0; i < items.length; i++) {
+                                    var it = items[i] || {};
+
+                                    if (!it.enabled || !it.nick)
+                                            continue;
+
+                                    var href = it.url || '#';
+
+                                    donatersPublicListV128.appendChild(E('a', {
+                                            'href': href,
+                                            'target': '_blank',
+                                            'rel': 'noopener noreferrer',
+                                            'class': 'ss-donater-mini-v134'
+                                    }, [
+                                            E('span', { 'class': 'ss-donater-mini-icon-v134' }, '✦'),
+                                            E('span', { 'class': 'ss-donater-mini-name-v134' }, it.nick)
+                                    ]));
+                            }
+                    }
+
+                    function ssLoadDonatersPublicV128() {
+                            return fs.exec('/usr/bin/sub-sync-donaters', ['get']).then(function(res) {
+                                    var txt = String((res && res.stdout) || '').trim();
+                                    var data = {};
+
+                                    try {
+                                            data = JSON.parse(txt || '{}');
+                                    } catch(e) {
+                                            data = { items: [] };
+                                    }
+
+                                    ssRenderDonatersPublicV128(data);
+                            }).catch(function() {
+                                    ssRenderDonatersPublicV128({ items: [] });
+                            });
+                    }
+
+                    var donatersPublicCardV128 = E('div', {
+                            'class': 'ss-card ss-donaters-card-v134'
+                    }, [
+                            E('h3', {
+                                    'class': 'ss-donaters-title-v134'
+                            }, '💎 Донатеры'),
+                            donatersPublicListV128
+                    ]);
+
+                    window.setTimeout(function() {
+                            try { ssLoadDonatersPublicV128(); } catch(e) {}
+                    }, 700);
+
+
+
+
+
                     var manualCardV53B = E('div', {
                             'class': 'ss-manual-flat-v94',
                            /* SUBSYNC_MANUAL_CARD_NO_LEFT_LINE_V62 */
@@ -2911,7 +2980,7 @@ if (typeof window !== "undefined") window.setTimeout(function() { try { ssHydrat
                                    '.ss-widget__value .ss-label{color:#aeb4bb!important}',
                                    '.ss-widget__value .ss-val{word-break:break-word!important}'
                            ].join('\n')),
-				manualCardV53B, widgetsRow, sysWidgetsRowV96, wServerCard, sectionCreateCardV45B, subsCard, xhttpCard, autoPickCard, serversCard,
+				manualCardV53B, widgetsRow, sysWidgetsRowV96, wServerCard, sectionCreateCardV45B, subsCard, xhttpCard, autoPickCard, serversCard, donatersPublicCardV128, 
 				E('div', { 'style': 'text-align:right;margin-top:8px' }, [
                                         E('span', { 'class': 'ss-version ss-version-hidden-v90', 'style': 'display:none!important' }, '')
 				])

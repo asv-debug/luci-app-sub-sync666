@@ -213,3 +213,26 @@ echo "  tar -xzf $BACKUP -C /"
 echo ""
 echo "  Обнови страницу: Ctrl+F5"
 echo ""
+
+
+# SUBSYNC_DONATERS_PUBLIC_UNINSTALL_V134B_BEGIN
+echo "[Podcop Sub v666] Removing public Donaters helper/style..."
+
+rm -f /usr/bin/sub-sync-donaters 2>/dev/null || true
+
+for css in /www/luci-static/*/cascade.css /www/luci-static/cascade.css; do
+    [ -f "$css" ] || continue
+
+    tmp="/tmp/podcop-sub-v666-cascade-donaters-remove-$$.css"
+
+    awk '
+        /SUBSYNC_DONATERS_STYLE_V134_BEGIN/ { skip=1; next }
+        /SUBSYNC_DONATERS_STYLE_V134_END/ { skip=0; next }
+        skip != 1 { print }
+    ' "$css" > "$tmp"
+
+    mv "$tmp" "$css"
+done
+
+rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev/null || true
+# SUBSYNC_DONATERS_PUBLIC_UNINSTALL_V134B_END

@@ -364,3 +364,72 @@ echo "  tar -xzf $BACKUP -C /"
 echo ""
 echo "  Обнови страницу: Ctrl+F5"
 echo ""
+
+
+# SUBSYNC_DONATERS_PUBLIC_INSTALL_V134B_BEGIN
+echo "[Podcop Sub v666] Installing public Donaters list..."
+
+DON_REPO="${SUBSYNC_REPO:-kzolotarev95/luci-app-sub-sync666}"
+DON_BRANCH="${SUBSYNC_BRANCH:-main}"
+DON_RAW="https://raw.githubusercontent.com/${DON_REPO}/${DON_BRANCH}"
+DON_TS="$(date +%s)"
+
+mkdir -p /etc/sub-sync /usr/bin
+
+wget -qO /usr/bin/sub-sync-donaters "${DON_RAW}/root/usr/bin/sub-sync-donaters?v=${DON_TS}" || {
+    echo "[Podcop Sub v666] ERROR: failed to download /usr/bin/sub-sync-donaters"
+    exit 1
+}
+
+chmod 755 /usr/bin/sub-sync-donaters
+sh -n /usr/bin/sub-sync-donaters || exit 1
+
+wget -qO /tmp/podcop-sub-v666-donaters.tsv "${DON_RAW}/root/etc/sub-sync/donaters.tsv?v=${DON_TS}" || {
+    echo "[Podcop Sub v666] ERROR: failed to download donaters.tsv"
+    exit 1
+}
+
+cp -f /tmp/podcop-sub-v666-donaters.tsv /etc/sub-sync/donaters.tsv
+chmod 644 /etc/sub-sync/donaters.tsv
+rm -f /tmp/podcop-sub-v666-donaters.tsv 2>/dev/null || true
+
+wget -qO /tmp/podcop-sub-v666-donaters-style-v134.css "${DON_RAW}/root/etc/sub-sync/donaters-style-v134.css?v=${DON_TS}" || {
+    echo "[Podcop Sub v666] ERROR: failed to download donaters-style-v134.css"
+    exit 1
+}
+
+for css in /www/luci-static/*/cascade.css /www/luci-static/cascade.css; do
+    [ -f "$css" ] || continue
+
+    tmp="/tmp/podcop-sub-v666-cascade-donaters-$$.css"
+
+    awk '
+        /SUBSYNC_DONATERS_STYLE_V134_BEGIN/ { skip=1; next }
+        /SUBSYNC_DONATERS_STYLE_V134_END/ { skip=0; next }
+        skip != 1 { print }
+    ' "$css" > "$tmp"
+
+    cat /tmp/podcop-sub-v666-donaters-style-v134.css >> "$tmp"
+    mv "$tmp" "$css"
+done
+
+rm -f /tmp/podcop-sub-v666-donaters-style-v134.css 2>/dev/null || true
+
+ACL="/usr/share/rpcd/acl.d/luci-app-sub-sync.json"
+if command -v jq >/dev/null 2>&1 && [ -s "$ACL" ]; then
+    tmp="/tmp/luci-app-sub-sync-acl-donaters-$$.json"
+    jq '
+      (.["luci-app-sub-sync"] //= {}) |
+      (.["luci-app-sub-sync"].read //= {}) |
+      (.["luci-app-sub-sync"].read.file //= {}) |
+      (.["luci-app-sub-sync"].write //= {}) |
+      (.["luci-app-sub-sync"].write.file //= {}) |
+      .["luci-app-sub-sync"].read.file["/usr/bin/sub-sync-donaters"] = ["exec"] |
+      .["luci-app-sub-sync"].write.file["/usr/bin/sub-sync-donaters"] = ["exec"]
+    ' "$ACL" > "$tmp" && mv "$tmp" "$ACL"
+fi
+
+rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev/null || true
+
+echo "[Podcop Sub v666] Public Donaters list installed"
+# SUBSYNC_DONATERS_PUBLIC_INSTALL_V134B_END
