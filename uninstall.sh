@@ -155,6 +155,21 @@ rm -rf /etc/sub-sync
 rm -f /tmp/sub-sync-status /tmp/sub-sync-response /tmp/sub-sync-decoded
 rm -rf /tmp/sub-sync* /tmp/subsync-* /tmp/luci-app-sub-sync* 2>/dev/null || true
 
+# SUBSYNC_UNINSTALL_HELPERS_ACL_V120_BEGIN
+echo "→ Удаление helper файлов Podcop Sub v666..."
+rm -f \
+    /usr/bin/sub-sync \
+    /usr/bin/sub-sync.v51base \
+    /usr/bin/sub-sync-section \
+    /usr/bin/sub-sync-autoadd \
+    /usr/bin/sub-sync-subs-info \
+    /usr/bin/sub-sync-system-info \
+    /usr/bin/sub-sync-singbox-log \
+    /usr/bin/sub-sync-donaters \
+    /usr/share/rpcd/acl.d/luci-app-sub-sync.json \
+    2>/dev/null || true
+# SUBSYNC_UNINSTALL_HELPERS_ACL_V120_END
+
 echo "→ Очистка LuCI кэша..."
 rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev/null || true
 touch /usr/lib/opkg/status 2>/dev/null || touch /lib/apk/db/installed 2>/dev/null || true

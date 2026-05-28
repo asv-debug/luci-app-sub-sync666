@@ -220,6 +220,37 @@ chmod 644 "$PODKOP_MENU"
 echo "→ Удаление отдельного пункта Services → Podcop Sub v666, если был..."
 rm -f /usr/share/luci/menu.d/luci-app-sub-sync.json
 
+# SUBSYNC_INSTALL_HELPERS_ACL_V120_BEGIN
+echo "→ Установка helper файлов Podcop Sub v666..."
+
+for helper in \
+    sub-sync.v51base \
+    sub-sync-section \
+    sub-sync-autoadd \
+    sub-sync-subs-info \
+    sub-sync-system-info \
+    sub-sync-singbox-log \
+    sub-sync-donaters
+do
+    echo "  - /usr/bin/$helper"
+    wget -qO "/usr/bin/$helper" "$RAW/root/usr/bin/$helper?v=$(date +%s)" || {
+        echo "  ! helper не скачался: $helper"
+        continue
+    }
+    chmod 755 "/usr/bin/$helper" 2>/dev/null || true
+done
+
+echo "→ Установка полного ACL Podcop Sub v666..."
+mkdir -p /usr/share/rpcd/acl.d
+if wget -qO /tmp/luci-app-sub-sync.acl "$RAW/root/usr/share/rpcd/acl.d/luci-app-sub-sync.json?v=$(date +%s)"; then
+    cp -f /tmp/luci-app-sub-sync.acl /usr/share/rpcd/acl.d/luci-app-sub-sync.json
+else
+    echo "  ! ACL из GitHub не скачался, оставляю текущий"
+fi
+
+chmod 644 /usr/share/rpcd/acl.d/luci-app-sub-sync.json 2>/dev/null || true
+# SUBSYNC_INSTALL_HELPERS_ACL_V120_END
+
 echo "→ Очистка LuCI кэша..."
 rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev/null || true
 touch /usr/lib/opkg/status 2>/dev/null || touch /lib/apk/db/installed 2>/dev/null || true
