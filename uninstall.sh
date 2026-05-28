@@ -275,3 +275,27 @@ rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev
 /etc/init.d/rpcd restart || true
 /etc/init.d/uhttpd restart || true
 # SUBSYNC_MIXED_URLTEST_UNINSTALL_V165B_END
+
+# SUBSYNC_PUBLIC_UI_FORCE_UNINSTALL_V166_BEGIN
+rm -f /usr/bin/sub-sync-public-ui-patch /usr/bin/sub-sync-singbox-check /usr/bin/sub-sync-singbox-log
+
+if [ -f /usr/share/rpcd/acl.d/luci-app-sub-sync.json ] && command -v jq >/dev/null 2>&1; then
+  _acl="/usr/share/rpcd/acl.d/luci-app-sub-sync.json"
+  _tmp="/tmp/luci-app-sub-sync.acl.uninstall.v166force.$$"
+  jq '
+    if .["luci-app-sub-sync"] then
+      del(.["luci-app-sub-sync"].read.file["/usr/bin/sub-sync-public-ui-patch"]) |
+      del(.["luci-app-sub-sync"].write.file["/usr/bin/sub-sync-public-ui-patch"]) |
+      del(.["luci-app-sub-sync"].read.file["/usr/bin/sub-sync-singbox-check"]) |
+      del(.["luci-app-sub-sync"].write.file["/usr/bin/sub-sync-singbox-check"]) |
+      del(.["luci-app-sub-sync"].read.file["/usr/bin/sub-sync-singbox-log"]) |
+      del(.["luci-app-sub-sync"].write.file["/usr/bin/sub-sync-singbox-log"])
+    else . end
+  ' "$_acl" > "$_tmp" && jq empty "$_tmp" && cp -f "$_tmp" "$_acl"
+  rm -f "$_tmp"
+fi
+
+rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev/null || true
+/etc/init.d/rpcd restart || true
+/etc/init.d/uhttpd restart || true
+# SUBSYNC_PUBLIC_UI_FORCE_UNINSTALL_V166_END

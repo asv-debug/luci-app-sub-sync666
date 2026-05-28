@@ -1,0 +1,6 @@
+#!/bin/sh
+# SUBSYNC_SINGBOX_LOG_HELPER_V166
+set -u
+LINES="${1:-120}"
+case "$LINES" in ''|*[!0-9]*) LINES=120 ;; esac
+logread 2>/dev/null | grep -Ei 'sub-sync|subsync|podkop|podcop|sing-box|hysteria|hysteria2|hy2|urltest|xhttp|Unknown transport|configuration invalid|fatal|invalid|Nice|SyntaxError|TypeError|ReferenceError|Access denied|Доступ запрещ' | tail -n "$LINES"

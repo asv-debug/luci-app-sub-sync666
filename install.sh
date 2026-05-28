@@ -519,3 +519,50 @@ rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev
 
 echo "[Sub Sync] Mixed URLTest v165b installed"
 # SUBSYNC_MIXED_URLTEST_INSTALL_V165B_END
+
+# SUBSYNC_PUBLIC_UI_FORCE_INSTALL_V166_BEGIN
+SUBSYNC_REPO="${SUBSYNC_REPO:-kzolotarev95/luci-app-sub-sync666}"
+SUBSYNC_BRANCH="${SUBSYNC_BRANCH:-main}"
+SUBSYNC_RAW="https://raw.githubusercontent.com/${SUBSYNC_REPO}/${SUBSYNC_BRANCH}"
+SUBSYNC_CACHEBUST="$(date +%s 2>/dev/null || echo now)"
+
+subsync_install_helper_v166() {
+  _name="$1"
+  _tmp="/tmp/$_name.v166.$$"
+  if wget -qO "$_tmp" "$SUBSYNC_RAW/usr/bin/$_name?v=$SUBSYNC_CACHEBUST"; then
+    cp -f "$_tmp" "/usr/bin/$_name"
+    chmod 755 "/usr/bin/$_name"
+  else
+    echo "[Sub Sync] WARN: failed to download $_name"
+  fi
+  rm -f "$_tmp"
+}
+
+for _h in sub-sync-public-ui-patch sub-sync-singbox-check sub-sync-singbox-log; do
+  subsync_install_helper_v166 "$_h"
+done
+
+if [ -f /usr/share/rpcd/acl.d/luci-app-sub-sync.json ] && command -v jq >/dev/null 2>&1; then
+  _acl="/usr/share/rpcd/acl.d/luci-app-sub-sync.json"
+  _tmp="/tmp/luci-app-sub-sync.acl.v166force.$$"
+  jq '
+    .["luci-app-sub-sync"] = (.["luci-app-sub-sync"] // {}) |
+    .["luci-app-sub-sync"].read = (.["luci-app-sub-sync"].read // {}) |
+    .["luci-app-sub-sync"].write = (.["luci-app-sub-sync"].write // {}) |
+    .["luci-app-sub-sync"].read.file = (.["luci-app-sub-sync"].read.file // {}) |
+    .["luci-app-sub-sync"].write.file = (.["luci-app-sub-sync"].write.file // {}) |
+    .["luci-app-sub-sync"].read.file["/usr/bin/sub-sync-public-ui-patch"] = ["exec"] |
+    .["luci-app-sub-sync"].write.file["/usr/bin/sub-sync-public-ui-patch"] = ["exec"] |
+    .["luci-app-sub-sync"].read.file["/usr/bin/sub-sync-singbox-check"] = ["exec"] |
+    .["luci-app-sub-sync"].write.file["/usr/bin/sub-sync-singbox-check"] = ["exec"] |
+    .["luci-app-sub-sync"].read.file["/usr/bin/sub-sync-singbox-log"] = ["exec"] |
+    .["luci-app-sub-sync"].write.file["/usr/bin/sub-sync-singbox-log"] = ["exec"]
+  ' "$_acl" > "$_tmp" && jq empty "$_tmp" && cp -f "$_tmp" "$_acl"
+  rm -f "$_tmp"
+fi
+
+[ -x /usr/bin/sub-sync-public-ui-patch ] && /usr/bin/sub-sync-public-ui-patch || true
+[ -x /usr/bin/sub-sync-singbox-check ] && /usr/bin/sub-sync-singbox-check >/dev/null 2>&1 || true
+
+echo "[Sub Sync] Public UI force patch + sing-box helpers v166 installed"
+# SUBSYNC_PUBLIC_UI_FORCE_INSTALL_V166_END
