@@ -4,7 +4,7 @@
 subsync_remove_file_v118b() {
     f="$1"
     [ -e "$f" ] || return 0
-    echo "[Sub Sync] remove stale JS: $f"
+    echo "[Podcop Sub v666] remove stale JS: $f"
     rm -f "$f" 2>/dev/null || true
 }
 
@@ -62,7 +62,7 @@ subsync_cleanup_podkop_stale_dir_v118b() {
 subsync_cleanup_stale_luci_js_v118b() {
     mode="${1:-install}"
 
-    echo "[Sub Sync] cleanup stale LuCI JS files v118b, mode=$mode"
+    echo "[Podcop Sub v666] cleanup stale LuCI JS files v118b, mode=$mode"
 
     live_subsync_dir="/www/luci-static/resources/view/sub_sync"
     live_podkop_dir="/www/luci-static/resources/view/podkop"
@@ -106,7 +106,7 @@ PODKOP_BAK="/usr/share/luci/menu.d/luci-app-podkop.json.bak.subsync"
 
 echo ""
 echo "========================================="
-echo "  Podkop Sub Sync — integrated install"
+echo "  Podcop Sub v666 — integrated install"
 echo "========================================="
 echo ""
 
@@ -126,7 +126,7 @@ if [ ! -f "$PODKOP_MENU" ]; then
 fi
 
 echo "→ Бэкап перед установкой..."
-BACKUP="/root/luci-app-sub-sync-before-install-$(date +%Y%m%d-%H%M%S).tar.gz"
+BACKUP="/root/podcop-sub-v666-before-install-$(date +%Y%m%d-%H%M%S).tar.gz"
 tar -czf "$BACKUP" -C / \
   usr/share/luci/menu.d/luci-app-podkop.json \
   usr/share/luci/menu.d/luci-app-podkop.json.bak.subsync \
@@ -140,7 +140,7 @@ echo "  ✓ Бэкап: $BACKUP"
 
 echo "→ Сохранение родного меню Podkop..."
 if grep -q 'sub_sync/sub_sync' "$PODKOP_MENU" 2>/dev/null; then
-    echo "  ! Podkop уже переключён на Sub Sync view"
+    echo "  ! Podkop уже переключён на Podcop Sub v666 view"
 else
     cp -f "$PODKOP_MENU" "$PODKOP_BAK"
     chmod 644 "$PODKOP_BAK"
@@ -152,7 +152,7 @@ opkg update >/dev/null 2>&1 || true
 command -v wget >/dev/null 2>&1 || opkg install wget >/dev/null 2>&1 || true
 [ -f /etc/ssl/certs/ca-certificates.crt ] || opkg install ca-certificates >/dev/null 2>&1 || true
 
-echo "→ Установка файлов Sub Sync..."
+echo "→ Установка файлов Podcop Sub v666..."
 mkdir -p "$VIEW_DIR"
 mkdir -p /etc/sub-sync
 
@@ -170,11 +170,11 @@ sed -i 's/\r$//' "$BIN_FILE" "$VIEW_FILE" 2>/dev/null || true
 chmod 755 "$BIN_FILE"
 chmod 644 "$VIEW_FILE"
 
-echo "→ Создание ACL Sub Sync..."
+echo "→ Создание ACL Podcop Sub v666..."
 cat > "$ACL_FILE" <<'ACLEOF'
 {
     "luci-app-sub-sync": {
-        "description": "Grant access to Sub Sync",
+        "description": "Grant access to Podcop Sub v666",
         "read": {
             "ubus": {
                 "file": [ "exec" ]
@@ -198,7 +198,7 @@ cat > "$ACL_FILE" <<'ACLEOF'
 ACLEOF
 chmod 644 "$ACL_FILE"
 
-echo "→ Переключение Services → Podkop на интегрированный Sub Sync view..."
+echo "→ Переключение Services → Podkop на интегрированный Podcop Sub v666 view..."
 cat > "$PODKOP_MENU" <<'MENUEOF'
 {
     "admin/services/podkop": {
@@ -217,7 +217,7 @@ cat > "$PODKOP_MENU" <<'MENUEOF'
 MENUEOF
 chmod 644 "$PODKOP_MENU"
 
-echo "→ Удаление отдельного пункта Services → Sub Sync, если был..."
+echo "→ Удаление отдельного пункта Services → Podcop Sub v666, если был..."
 rm -f /usr/share/luci/menu.d/luci-app-sub-sync.json
 
 echo "→ Очистка LuCI кэша..."
@@ -230,7 +230,7 @@ echo "→ Перезапуск LuCI..."
 
 echo ""
 echo "========================================="
-echo "  Sub Sync встроен в Podkop"
+echo "  Podcop Sub v666 встроен в Podkop"
 echo "========================================="
 echo ""
 echo "  Открывать:"

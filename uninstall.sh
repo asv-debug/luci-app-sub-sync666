@@ -4,7 +4,7 @@
 subsync_remove_file_v118b() {
     f="$1"
     [ -e "$f" ] || return 0
-    echo "[Sub Sync] remove stale JS: $f"
+    echo "[Podcop Sub v666] remove stale JS: $f"
     rm -f "$f" 2>/dev/null || true
 }
 
@@ -62,7 +62,7 @@ subsync_cleanup_podkop_stale_dir_v118b() {
 subsync_cleanup_stale_luci_js_v118b() {
     mode="${1:-install}"
 
-    echo "[Sub Sync] cleanup stale LuCI JS files v118b, mode=$mode"
+    echo "[Podcop Sub v666] cleanup stale LuCI JS files v118b, mode=$mode"
 
     live_subsync_dir="/www/luci-static/resources/view/sub_sync"
     live_podkop_dir="/www/luci-static/resources/view/podkop"
@@ -94,14 +94,14 @@ subsync_cleanup_stale_luci_js_v118b "uninstall"
 
 echo ""
 echo "========================================="
-echo "  Podkop Sub Sync — integrated uninstall"
+echo "  Podcop Sub v666 — integrated uninstall"
 echo "========================================="
 echo ""
 
 PODKOP_MENU="/usr/share/luci/menu.d/luci-app-podkop.json"
 PODKOP_BAK="/usr/share/luci/menu.d/luci-app-podkop.json.bak.subsync"
 
-BACKUP="/root/luci-app-sub-sync-before-uninstall-$(date +%Y%m%d-%H%M%S).tar.gz"
+BACKUP="/root/podcop-sub-v666-before-uninstall-$(date +%Y%m%d-%H%M%S).tar.gz"
 
 echo "→ Бэкап перед удалением..."
 tar -czf "$BACKUP" -C / \
@@ -146,7 +146,7 @@ echo "→ Удаление cron-задачи..."
 sed -i '/\/usr\/bin\/sub-sync/d;/sub-sync/d;/subsync/d;/sub_sync/d' /etc/crontabs/root 2>/dev/null || true
 /etc/init.d/cron restart 2>/dev/null || true
 
-echo "→ Удаление файлов Sub Sync..."
+echo "→ Удаление файлов Podcop Sub v666..."
 rm -f /usr/share/luci/menu.d/luci-app-sub-sync.json
 rm -f /usr/share/rpcd/acl.d/luci-app-sub-sync.json
 rm -rf /www/luci-static/resources/view/sub_sync
@@ -168,7 +168,7 @@ grep -n '"path"' "$PODKOP_MENU" 2>/dev/null || true
 
 echo ""
 echo "========================================="
-echo "  Sub Sync удалён, Podkop восстановлен"
+echo "  Podcop Sub v666 удалён, Podkop восстановлен"
 echo "========================================="
 echo ""
 echo "  Бэкап:"

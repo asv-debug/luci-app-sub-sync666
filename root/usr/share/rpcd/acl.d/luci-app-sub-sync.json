@@ -1,6 +1,6 @@
 {
     "luci-app-sub-sync": {
-        "description": "Grant access to Sub Sync",
+        "description": "Grant access to Podcop Sub v666",
         "read": {
             "ubus": {
                 "file": [ "exec" ],
