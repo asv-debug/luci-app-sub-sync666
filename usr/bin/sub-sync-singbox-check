@@ -1,7 +1,6 @@
 #!/bin/sh
-# SUBSYNC_SINGBOX_CHECK_HELPER_V166
+# SUBSYNC_SINGBOX_CHECK_HELPER_V166C
 set -u
-
 CONF="${1:-/etc/sing-box/config.json}"
 
 if ! command -v sing-box >/dev/null 2>&1; then
