@@ -1627,7 +1627,7 @@ syncAllBtnStates(sec3);
                                         subInfoClearV17();
 
                                         if (list.length === 0) {
-                                                subInfoList.appendChild(E('div', { 'class': 'ss-label' }, 'Подписок пока нет.'));
+                                                subInfoList.appendChild(E('div', { 'class': 'ss-label' }, 'Подписка добавлена, но этот URL не отдаёт лимит/срок (no_userinfo). Серверы уже загружены; для GitHub raw списков это нормально.'));
                                                 subInfoStatus.textContent = '';
                                                 return;
                                         }

@@ -713,3 +713,39 @@ rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev
 /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
 echo "[Sub Sync] v194 install complete"
 # SUBSYNC_PUBLIC_INSTALL_V194_FIX_BASE_END
+
+# SUBSYNC_PUBLIC_INSTALL_V196_CLEAN_STALE_UI_BEGIN
+echo "[Sub Sync] v196: cleaning stale global UI patch"
+
+SUBSYNC_GH_REPO="${SUBSYNC_REPO:-kzolotarev95/luci-app-sub-sync666}"
+SUBSYNC_GH_BRANCH="${SUBSYNC_BRANCH:-main}"
+SUBSYNC_RAW_BASE="https://raw.githubusercontent.com/${SUBSYNC_GH_REPO}/${SUBSYNC_GH_BRANCH}"
+
+mkdir -p /www/luci-static/resources/view/sub_sync
+
+if wget -qO /tmp/sub_sync.v196.clean.js "${SUBSYNC_RAW_BASE}/htdocs/luci-static/resources/view/sub_sync/sub_sync.js?v=$(date +%s)"; then
+  if grep -q 'widgetsRow' /tmp/sub_sync.v196.clean.js && grep -q 'sysWidgetsRowV96' /tmp/sub_sync.v196.clean.js; then
+    cp -f /tmp/sub_sync.v196.clean.js /www/luci-static/resources/view/sub_sync/sub_sync.js
+    echo "[Sub Sync] v196 clean JS installed"
+  else
+    echo "[Sub Sync] v196 WARN: downloaded JS failed marker check"
+  fi
+else
+  echo "[Sub Sync] v196 WARN: failed to download clean JS"
+fi
+
+sed -i \
+  's/Подписок пока нет\./Подписка добавлена, но этот URL не отдаёт лимит\/срок \(no_userinfo\). Серверы уже загружены; для GitHub raw списков это нормально./g' \
+  /www/luci-static/resources/view/sub_sync/sub_sync.js 2>/dev/null || true
+
+if [ -f /usr/bin/sub-sync-public-ui-patch ]; then
+  mv /usr/bin/sub-sync-public-ui-patch "/usr/bin/sub-sync-public-ui-patch.disabled-v196-$(date +%Y%m%d-%H%M%S)" 2>/dev/null || rm -f /usr/bin/sub-sync-public-ui-patch
+  echo "[Sub Sync] v196 stale public-ui helper disabled"
+fi
+
+rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev/null || true
+/etc/init.d/rpcd restart >/dev/null 2>&1 || true
+/etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+
+echo "[Sub Sync] v196 stale UI cleanup complete"
+# SUBSYNC_PUBLIC_INSTALL_V196_CLEAN_STALE_UI_END

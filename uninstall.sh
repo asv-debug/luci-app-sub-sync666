@@ -348,3 +348,11 @@ rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev
 /etc/init.d/rpcd restart >/dev/null 2>&1 || true
 /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
 # SUBSYNC_PUBLIC_UNINSTALL_V194_FIX_BASE_END
+
+# SUBSYNC_PUBLIC_UNINSTALL_V196_CLEAN_STALE_UI_BEGIN
+rm -f /usr/bin/sub-sync-public-ui-patch 2>/dev/null || true
+rm -f /usr/bin/sub-sync-public-ui-patch.disabled-v196-* 2>/dev/null || true
+rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev/null || true
+/etc/init.d/rpcd restart >/dev/null 2>&1 || true
+/etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+# SUBSYNC_PUBLIC_UNINSTALL_V196_CLEAN_STALE_UI_END
