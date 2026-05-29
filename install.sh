@@ -1,5 +1,5 @@
 #!/bin/sh
-# PODCOP_SUB_V666_PUBLIC_INSTALL_CLEAN_V208
+# PODCOP_SUB_V666_PUBLIC_INSTALL_CLEAN_V212
 set -u
 
 REPO_SLUG="${SUBSYNC_REPO:-kzolotarev95/luci-app-sub-sync666}"
@@ -7,7 +7,7 @@ BRANCH="${SUBSYNC_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/${REPO_SLUG}/${BRANCH}"
 
 echo "========================================="
-echo "  Podcop Sub v666 — public install v208"
+echo "  Podcop Sub v666 — public install v212"
 echo "========================================="
 echo "Backup: disabled for public/friend install"
 
@@ -27,7 +27,7 @@ fetch_file() {
 
 echo "=== install UI ==="
 fetch_file "htdocs/luci-static/resources/view/sub_sync/sub_sync.js" "/www/luci-static/resources/view/sub_sync/sub_sync.js" 644
-fetch_file "htdocs/luci-static/resources/view/sub_sync/sub_sync_v208.js" "/www/luci-static/resources/view/sub_sync/sub_sync_v208.js" 644
+fetch_file "htdocs/luci-static/resources/view/sub_sync/sub_sync_v212.js" "/www/luci-static/resources/view/sub_sync/sub_sync_v212.js" 644
 
 echo "=== install ACL ==="
 fetch_file "usr/share/rpcd/acl.d/luci-app-sub-sync.json" "/usr/share/rpcd/acl.d/luci-app-sub-sync.json" 644
@@ -48,7 +48,6 @@ for f in \
   sub-sync-manual-import \
   sub-sync-manual-link \
   sub-sync-section \
-  sub-sync-singbox-check \
   sub-sync-singbox-log \
   sub-sync-subs-info \
   sub-sync-system-info \
@@ -72,13 +71,14 @@ cat > /usr/share/luci/menu.d/luci-app-podkop.json <<'MENU'
 {
   "admin/services/podkop": {
     "title": "Podkop",
-    "order": 60,
+    "order": 42,
     "action": {
       "type": "view",
-      "path": "sub_sync/sub_sync_v208"
+      "path": "sub_sync/sub_sync_v212"
     },
     "depends": {
-      "acl": [ "luci-app-podkop", "luci-app-sub-sync" ]
+      "acl": [ "luci-app-podkop", "luci-app-sub-sync" ],
+      "uci": { "podkop": true }
     }
   }
 }
@@ -98,7 +98,7 @@ rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev
 /etc/init.d/podkop restart >/dev/null 2>&1 || true
 
 echo "========================================="
-echo "Podcop Sub v666 public install v208 complete"
+echo "Podcop Sub v666 public install v212 complete"
 echo "Open: Services -> Podkop"
 echo "Ctrl+F5 after install"
 echo "========================================="

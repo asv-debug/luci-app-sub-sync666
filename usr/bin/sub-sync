@@ -1,18 +1,10 @@
 #!/bin/sh
-# SUBSYNC_HAPP_JSON_HY2_WRAPPER_V177
-BASE="/usr/bin/sub-sync.before-happ-json-hy2-v177"
-HELPER="/usr/bin/sub-sync-happ-json-hy2-import"
+# SUBSYNC_WRAPPER_REAL_BACKEND_V212
+REAL="/usr/bin/sub-sync.real"
 
-case "${1:-}" in
-  sync|update|refresh)
-    "$BASE" "$@"
-    rc="$?"
-    if [ "$rc" = "0" ] && [ -x "$HELPER" ]; then
-      "$HELPER" || true
-    fi
-    exit "$rc"
-  ;;
-  *)
-    exec "$BASE" "$@"
-  ;;
-esac
+if [ ! -x "$REAL" ]; then
+  echo "ERROR: /usr/bin/sub-sync.real not found"
+  exit 1
+fi
+
+exec "$REAL" "$@"
