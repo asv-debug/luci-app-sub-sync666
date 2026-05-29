@@ -1,4 +1,5 @@
 #!/bin/sh
+# SUBSYNC_PUBLIC_BUILD_V259
 # SUBSYNC_PUBLIC_BUILD_V258
 # SUBSYNC_PUBLIC_BUILD_V256
 # SUBSYNC_PUBLIC_BUILD_V255
@@ -14,7 +15,7 @@ BRANCH="${SUBSYNC_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/${REPO_SLUG}/${BRANCH}"
 
 echo "========================================="
-echo "  Podcop Sub v666 — public install v258"
+echo "  Podcop Sub v666 — public install v259"
 echo "========================================="
 echo "Backup: disabled for public/friend install"
 
@@ -306,3 +307,70 @@ rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev
 
 logger -t sub-sync "Podcop Sub v666 public build v258 installed" 2>/dev/null || true
 # SUBSYNC_INSTALL_VERSION_FILES_V258_END
+# SUBSYNC_INSTALL_VERSION_FILES_V259_BEGIN
+mkdir -p /etc/sub-sync
+echo "259" > /etc/sub-sync/module-build
+echo "v259" > /etc/sub-sync/module-version
+
+SUBSYNC_RAW_BASE="${SUBSYNC_RAW_BASE:-${RAW_BASE:-https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main}}"
+DST="/www/luci-static/resources/view/sub_sync"
+TMP_JS="/tmp/sub-sync-v259-$RANDOM.js"
+
+mkdir -p /usr/bin /usr/share/rpcd/acl.d "$DST"
+
+echo "=== v259 clean stale Sub Sync JS files ==="
+wget -qO "$TMP_JS" "$SUBSYNC_RAW_BASE/htdocs/luci-static/resources/view/sub_sync/sub_sync.js?v=$(date +%s)" || true
+
+if [ -s "$TMP_JS" ] && grep -q 'SUBSYNC_INSTALL_CACHE_AND_STALE_CLEANUP_V259_JS' "$TMP_JS"; then
+  rm -f "$DST"/sub_sync_v*.js "$DST"/sub_sync_live_*.js "$DST"/sub_sync_tmp_*.js "$DST"/*.bak "$DST"/*.old "$DST"/*.tmp 2>/dev/null || true
+
+  cp -f "$TMP_JS" "$DST/sub_sync.js"
+
+  for v in 211 221 238 252 253 254 255 256 258 259; do
+    cp -f "$TMP_JS" "$DST/sub_sync_v${v}.js"
+  done
+
+  echo "OK: Sub Sync JS replaced with v259 and stale files cleaned"
+else
+  echo "WARN: v259 JS marker missing, fallback normal download"
+  wget -qO "$DST/sub_sync.js" "$SUBSYNC_RAW_BASE/htdocs/luci-static/resources/view/sub_sync/sub_sync.js?v=$(date +%s)" || true
+  wget -qO "$DST/sub_sync_v259.js" "$SUBSYNC_RAW_BASE/htdocs/luci-static/resources/view/sub_sync/sub_sync_v259.js?v=$(date +%s)" || true
+fi
+
+rm -f "$TMP_JS" 2>/dev/null || true
+
+wget -qO /usr/bin/sub-sync-module-update "$SUBSYNC_RAW_BASE/usr/bin/sub-sync-module-update?v=$(date +%s)" && chmod 755 /usr/bin/sub-sync-module-update || true
+wget -qO /usr/share/rpcd/acl.d/luci-app-sub-sync.json "$SUBSYNC_RAW_BASE/usr/share/rpcd/acl.d/luci-app-sub-sync.json?v=$(date +%s)" || true
+
+# SUBSYNC_AUTO_INSTALL_PROTOBYZKS95_THEME_V259_BEGIN
+if [ "${SUBSYNC_SKIP_PROTOBYZKS95_THEME:-0}" != "1" ]; then
+  echo "=== install luci-theme-protobyzks95 ==="
+  THEME_TMP="/tmp/luci-theme-protobyzks95-install.sh"
+  THEME_URL="https://raw.githubusercontent.com/kzolotarev95/luci-theme-protobyzks95/main/install.sh?v=$(date +%s)"
+
+  if wget -qO "$THEME_TMP" "$THEME_URL"; then
+    if sh -n "$THEME_TMP" 2>/dev/null; then
+      sh "$THEME_TMP" || echo "WARN: luci-theme-protobyzks95 install failed"
+    else
+      echo "WARN: luci-theme-protobyzks95 install.sh syntax check failed"
+    fi
+  else
+    echo "WARN: failed to download luci-theme-protobyzks95 installer"
+  fi
+else
+  echo "SKIP: luci-theme-protobyzks95 auto install disabled"
+fi
+# SUBSYNC_AUTO_INSTALL_PROTOBYZKS95_THEME_V259_END
+
+# SUBSYNC_HARD_LUCI_CACHE_RESET_V259_BEGIN
+echo "=== hard LuCI cache reset v259 ==="
+rm -rf /tmp/luci-modulecache /tmp/luci-modulecache/* /tmp/luci-indexcache /tmp/luci-indexcache* /tmp/luci-sessions /tmp/luci-sessions/* 2>/dev/null || true
+find /tmp -maxdepth 1 -type d -name 'luci-*cache*' -exec rm -rf {} + 2>/dev/null || true
+find /tmp -maxdepth 1 -type f -name 'luci-*cache*' -delete 2>/dev/null || true
+sync
+/etc/init.d/rpcd restart >/dev/null 2>&1 || true
+/etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+# SUBSYNC_HARD_LUCI_CACHE_RESET_V259_END
+
+logger -t sub-sync "Podcop Sub v666 public build v259 installed" 2>/dev/null || true
+# SUBSYNC_INSTALL_VERSION_FILES_V259_END

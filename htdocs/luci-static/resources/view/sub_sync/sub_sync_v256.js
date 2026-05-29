@@ -1111,7 +1111,7 @@ syncAllBtnStates(sec3);
                             singboxConsoleBodyV81
                     ]);
 
-                    /* SUBSYNC_DONATERS_PUBLIC_ONLY_V258 */
+                    /* SUBSYNC_DONATERS_PUBLIC_ONLY_V259 */
                     /* SUBSYNC_DONATERS_PUBLIC_CARDS_V134_COMPACT_CARDS */
                     var donatersPublicListV128 = E('div', {
                             'class': 'ss-donaters-grid-v134'
@@ -5633,5 +5633,68 @@ return view.extend({
     window.setTimeout(cleanAndShowUpdateButtonV255, 700);
     window.setTimeout(cleanAndShowUpdateButtonV255, 1600);
     window.setInterval(cleanAndShowUpdateButtonV255, 1500);
+  } catch(e) {}
+})();
+
+;/* SUBSYNC_POST_UPDATE_AUTO_RELOAD_V259 */
+/* SUBSYNC_INSTALL_CACHE_AND_STALE_CLEANUP_V259_JS */
+(function(){
+  try {
+    if (window.__subsyncPostUpdateAutoReloadV259)
+      return;
+
+    window.__subsyncPostUpdateAutoReloadV259 = true;
+
+    function ssAutoReloadV259() {
+      var last = parseInt(sessionStorage.getItem('subsync_post_update_reload_v259') || '0', 10);
+      var now = Date.now();
+
+      if (last && (now - last) < 15000)
+        return;
+
+      sessionStorage.setItem('subsync_post_update_reload_v259', String(now));
+
+      try {
+        if (window.caches && caches.keys) {
+          caches.keys().then(function(keys) {
+            keys.forEach(function(k) { caches.delete(k); });
+          }).catch(function(){});
+        }
+      } catch(e) {}
+
+      window.setTimeout(function() {
+        var url = location.pathname + '?_subsync_refresh=' + Date.now();
+        if (location.hash)
+          url += location.hash;
+
+        location.replace(url);
+      }, 900);
+    }
+
+    function ssCheckUpdateDoneV259() {
+      var card = document.querySelector('.ss-module-update-card-v236');
+      if (!card)
+        return;
+
+      var txt = String(card.textContent || '');
+
+      if (/DONE:\s*install\.sh finished rc=0|Podcop Sub v666 public build v[0-9]+ installed|public build v[0-9]+ installed/i.test(txt)) {
+        ssAutoReloadV259();
+      }
+    }
+
+    window.setInterval(ssCheckUpdateDoneV259, 700);
+
+    window.setTimeout(function() {
+      try {
+        if (document.body && typeof MutationObserver !== 'undefined') {
+          new MutationObserver(ssCheckUpdateDoneV259).observe(document.body, {
+            childList: true,
+            subtree: true,
+            characterData: true
+          });
+        }
+      } catch(e) {}
+    }, 1000);
   } catch(e) {}
 })();
