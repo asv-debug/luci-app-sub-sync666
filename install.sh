@@ -126,8 +126,8 @@ if [ ! -f "$PODKOP_MENU" ]; then
 fi
 
 echo "→ Бэкап перед установкой..."
-BACKUP="/root/podcop-sub-v666-before-install-$(date +%Y%m%d-%H%M%S).tar.gz"
-tar -czf "$BACKUP" -C / \
+BACKUP="/tmp/podcop-sub-v666-no-backup-install +%Y%m%d-%H%M%S).tar.gz"
+echo "  - public build: backup disabled"
   usr/share/luci/menu.d/luci-app-podkop.json \
   usr/share/luci/menu.d/luci-app-podkop.json.bak.subsync \
   usr/share/luci/menu.d/luci-app-sub-sync.json \
@@ -749,3 +749,74 @@ rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev
 
 echo "[Sub Sync] v196 stale UI cleanup complete"
 # SUBSYNC_PUBLIC_INSTALL_V196_CLEAN_STALE_UI_END
+
+# SUBSYNC_PUBLIC_INSTALL_V201B_NO_FRIEND_BACKUPS_BEGIN
+echo "[Sub Sync] v201b: public install, friend backups disabled"
+
+SUBSYNC_GH_REPO="${SUBSYNC_REPO:-kzolotarev95/luci-app-sub-sync666}"
+SUBSYNC_GH_BRANCH="${SUBSYNC_BRANCH:-main}"
+SUBSYNC_RAW_BASE="https://raw.githubusercontent.com/${SUBSYNC_GH_REPO}/${SUBSYNC_GH_BRANCH}"
+
+subsync_v201b_install_file() {
+  src="$1"
+  dst="$2"
+  mkdir -p "$(dirname "$dst")"
+  if wget -qO "$dst" "${SUBSYNC_RAW_BASE}/${src}?v=$(date +%s)"; then
+    chmod 755 "$dst" 2>/dev/null || true
+    echo "[Sub Sync] v201b installed: $dst"
+  else
+    echo "[Sub Sync] v201b WARN: failed to download $src"
+  fi
+}
+
+subsync_v201b_install_file "htdocs/luci-static/resources/view/sub_sync/sub_sync.js" "/www/luci-static/resources/view/sub_sync/sub_sync.js"
+subsync_v201b_install_file "usr/share/rpcd/acl.d/luci-app-sub-sync.json" "/usr/share/rpcd/acl.d/luci-app-sub-sync.json"
+
+for f in \
+  sub-sync.real \
+  sub-sync \
+  sub-sync-autoadd \
+  sub-sync-urltest \
+  sub-sync-manual-import \
+  sub-sync-manual-link \
+  sub-sync-happ-json-hy2-import \
+  sub-sync-hy2-manager \
+  sub-sync-hy2-probe \
+  sub-sync-hy2-urltest \
+  sub-sync-xhttp-guard \
+  sub-sync-section \
+  sub-sync-subs-info \
+  sub-sync-system-info \
+  sub-sync-singbox-log \
+  sub-sync-singbox-check \
+  podcop-sub-v666-xhttp-patch
+do
+  subsync_v201b_install_file "usr/bin/$f" "/usr/bin/$f"
+done
+
+rm -f /usr/bin/sub-sync-public-ui-patch 2>/dev/null || true
+rm -f /usr/bin/sub-sync-public-ui-patch.disabled-v* 2>/dev/null || true
+
+mkdir -p /usr/share/luci/menu.d
+cat > /usr/share/luci/menu.d/luci-app-podkop.json <<'MENUJSON'
+{
+  "admin/services/podkop": {
+    "title": "Podkop",
+    "order": 60,
+    "action": {
+      "type": "view",
+      "path": "sub_sync/sub_sync"
+    },
+    "depends": {
+      "acl": [ "luci-app-podkop", "luci-app-sub-sync" ]
+    }
+  }
+}
+MENUJSON
+
+rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev/null || true
+/etc/init.d/rpcd restart >/dev/null 2>&1 || true
+/etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+
+echo "[Sub Sync] v201b install complete"
+# SUBSYNC_PUBLIC_INSTALL_V201B_NO_FRIEND_BACKUPS_END

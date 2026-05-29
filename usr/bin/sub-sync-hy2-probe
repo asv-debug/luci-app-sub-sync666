@@ -1,0 +1,93 @@
+#!/bin/sh
+# SUBSYNC_HY2_PROBE_SELF_CONTAINED_V198
+set -eu
+
+json_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+out_ok() {
+  msg="$(json_escape "$1")"
+  delay="${2:-}"
+  if [ -n "$delay" ]; then
+    printf '{"ok":true,"status":"WORK","delay":%s,"message":"%s"}\n' "$delay" "$msg"
+  else
+    printf '{"ok":true,"status":"WORK","message":"%s"}\n' "$msg"
+  fi
+}
+
+out_bad() {
+  printf '{"ok":false,"status":"NO WORK","error":"%s"}\n' "$(json_escape "$1")"
+}
+
+LINK="${1:-}"
+
+case "$LINK" in
+  hy2://*|hysteria2://*) ;;
+  *) out_bad "Вставь hy2:// или hysteria2://"; exit 0 ;;
+esac
+
+if ! sing-box check -c /etc/sing-box/config.json >/tmp/subsync-hy2-probe-check.out 2>&1; then
+  out_bad "sing-box config invalid: $(cat /tmp/subsync-hy2-probe-check.out)"
+  exit 0
+fi
+
+u="${LINK#*://}"
+u="${u%%#*}"
+u="${u%%\?*}"
+
+case "$u" in
+  *@*) hostport="${u#*@}" ;;
+  *) out_bad "В ссылке нет userinfo@host"; exit 0 ;;
+esac
+
+hostport="${hostport%%/*}"
+host="${hostport%:*}"
+port="${hostport##*:}"
+
+[ -n "$host" ] || { out_bad "Не смог разобрать host"; exit 0; }
+[ -n "$port" ] || { out_bad "Не смог разобрать port"; exit 0; }
+
+TAG="$(jq -r --arg h "$host" --arg p "$port" '
+  .outbounds[]?
+  | select(((.type // "") == "hysteria2" or (.type // "") == "hy2")
+    and ((.server // "") == $h)
+    and (((.server_port // "")|tostring) == $p))
+  | .tag
+' /etc/sing-box/config.json 2>/dev/null | head -n 1)"
+
+if [ -z "$TAG" ]; then
+  TAG="$(jq -r '.outbounds[]? | select((.type // "") == "hysteria2" or (.type // "") == "hy2") | .tag' /etc/sing-box/config.json 2>/dev/null | head -n 1)"
+fi
+
+[ -n "$TAG" ] || {
+  out_bad "HY2 outbound не найден в /etc/sing-box/config.json. Сначала выбери HY2 в секцию и дождись перезапуска Podkop."
+  exit 0
+}
+
+API="$(jq -r '.experimental.clash_api.external_controller // "127.0.0.1:9090"' /etc/sing-box/config.json 2>/dev/null || echo '127.0.0.1:9090')"
+
+case "$API" in
+  http://*|https://*) ;;
+  0.0.0.0:*) API="http://127.0.0.1:${API#0.0.0.0:}" ;;
+  127.*|localhost*) API="http://$API" ;;
+  :*) API="http://127.0.0.1$API" ;;
+  *) API="http://$API" ;;
+esac
+
+ENC_TAG="$(printf '%s' "$TAG" | jq -sRr @uri)"
+TEST_URL="https%3A%2F%2Fwww.gstatic.com%2Fgenerate_204"
+
+RESP="$(wget -T 10 -qO- "$API/proxies/$ENC_TAG/delay?timeout=8000&url=$TEST_URL" 2>/tmp/subsync-hy2-probe-wget.err || true)"
+DELAY="$(printf '%s' "$RESP" | jq -r '.delay // empty' 2>/dev/null || true)"
+
+if [ -n "$DELAY" ]; then
+  out_ok "HY2 отвечает через tag=$TAG" "$DELAY"
+  exit 0
+fi
+
+ERR="$(cat /tmp/subsync-hy2-probe-wget.err 2>/dev/null || true)"
+[ -n "$ERR" ] || ERR="$RESP"
+
+out_bad "Пинг через Clash API не прошёл. tag=$TAG api=$API resp=$ERR"
+exit 0

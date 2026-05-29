@@ -1,0 +1,51 @@
+#!/bin/sh
+
+F="/usr/lib/podkop/sing_box_config_facade.sh"
+M="/usr/lib/podkop/sing_box_config_manager.sh"
+PATCH="/root/patch_podkop_xhttp_local_safe.sh"
+TAG="sub-sync-xhttp-guard"
+
+need_patch=0
+
+[ -f "$F" ] || {
+    logger -t "$TAG" "facade not found: $F"
+    exit 0
+}
+
+[ -f "$M" ] || {
+    logger -t "$TAG" "manager not found: $M"
+    exit 0
+}
+
+grep -q 'xhttp|http)' "$F" 2>/dev/null || need_patch=1
+grep -q 'sing_box_cm_set_xhttp_transport' "$F" 2>/dev/null || need_patch=1
+grep -q 'sing_box_cm_set_xhttp_transport' "$M" 2>/dev/null || need_patch=1
+
+if [ "$need_patch" = "0" ]; then
+    exit 0
+fi
+
+logger -t "$TAG" "xHTTP patch missing after Podkop update, reapplying"
+
+if [ ! -f "$PATCH" ]; then
+    logger -t "$TAG" "patch script missing: $PATCH"
+    exit 0
+fi
+
+sh "$PATCH" >/tmp/sub-sync-xhttp-guard-last.log 2>&1 || {
+    logger -t "$TAG" "patch script failed, see /tmp/sub-sync-xhttp-guard-last.log"
+    exit 0
+}
+
+ok=1
+grep -q 'xhttp|http)' "$F" 2>/dev/null || ok=0
+grep -q 'sing_box_cm_set_xhttp_transport' "$F" 2>/dev/null || ok=0
+grep -q 'sing_box_cm_set_xhttp_transport' "$M" 2>/dev/null || ok=0
+
+if [ "$ok" = "1" ]; then
+    logger -t "$TAG" "xHTTP patch restored successfully"
+else
+    logger -t "$TAG" "xHTTP patch restore incomplete, see /tmp/sub-sync-xhttp-guard-last.log"
+fi
+
+exit 0

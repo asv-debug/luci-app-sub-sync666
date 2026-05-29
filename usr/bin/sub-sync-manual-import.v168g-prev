@@ -1,0 +1,311 @@
+#!/bin/sh
+# SUBSYNC_HY2_URLTEST_V168F_BEGIN
+set -u
+
+PREV="/usr/bin/sub-sync-manual-import.v168f-prev"
+SERVERS_JSON="/etc/sub-sync/servers.json"
+MANUAL_STORE="/etc/sub-sync/manual-hy2.tsv"
+
+cmd="${1:-list-hy2}"
+
+clean_name() {
+  printf '%s' "${1:-Manual HY2}" | tr '\t\r\n' '   ' | sed 's/^ *//;s/ *$//'
+}
+
+clean_link() {
+  printf '%s' "${1:-}" | tr -d '\r\n' | sed 's/^ *//;s/ *$//'
+}
+
+is_hy2() {
+  case "${1:-}" in
+    hy2://*|hysteria2://*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+hash_link() {
+  if command -v md5sum >/dev/null 2>&1; then
+    printf '%s' "$1" | md5sum | awk '{print $1}'
+  else
+    printf '%s' "$1" | cksum | awk '{print $1}'
+  fi
+}
+
+detect_urltest_section() {
+  wanted="${SUBSYNC_URLTEST_SECTION:-}"
+
+  if [ -n "$wanted" ] && uci -q show "podkop.$wanted" >/dev/null 2>&1; then
+    echo "$wanted"
+    return 0
+  fi
+
+  if uci -q show podkop.TEST123 >/dev/null 2>&1; then
+    echo "TEST123"
+    return 0
+  fi
+
+  sec="$(
+    uci -q show podkop 2>/dev/null \
+      | sed -n 's/^podkop\.\([^.=]*\)\.urltest_proxy_links=.*/\1/p' \
+      | head -n 1
+  )"
+
+  if [ -n "$sec" ]; then
+    echo "$sec"
+    return 0
+  fi
+
+  return 1
+}
+
+urltest_has_link() {
+  sec="$1"
+  link="$2"
+
+  uci -q show "podkop.$sec.urltest_proxy_links" 2>/dev/null \
+    | grep -F -- "$link" >/dev/null 2>&1
+}
+
+add_to_urltest() {
+  name="$(clean_name "${1:-Manual HY2}")"
+  link="$(clean_link "${2:-}")"
+
+  if ! is_hy2 "$link"; then
+    echo "ERROR: not HY2 link. Use hy2:// or hysteria2://" >&2
+    exit 2
+  fi
+
+  if ! sec="$(detect_urltest_section)"; then
+    echo "ERROR: URL Test section not found." >&2
+    echo "Expected podkop.TEST123 or existing urltest_proxy_links section." >&2
+    echo "Debug:" >&2
+    uci -q show podkop 2>/dev/null | grep -Ei 'TEST123|urltest|urltest_proxy_links' >&2 || true
+    exit 4
+  fi
+
+  if urltest_has_link "$sec" "$link"; then
+    echo "OK: HY2 already exists in URL Test section: $sec"
+    return 0
+  fi
+
+  uci add_list "podkop.$sec.urltest_proxy_links=$link"
+  uci commit podkop
+
+  echo "OK: HY2 added to URL Test section: $sec"
+  echo "NAME=$name"
+}
+
+ensure_servers_json() {
+  name="$(clean_name "${1:-Manual HY2}")"
+  link="$(clean_link "${2:-}")"
+
+  [ -n "$name" ] || name="Manual HY2"
+
+  if ! is_hy2 "$link"; then
+    echo "ERROR: not HY2 link. Use hy2:// or hysteria2://" >&2
+    exit 2
+  fi
+
+  mkdir -p /etc/sub-sync
+
+  if [ ! -s "$SERVERS_JSON" ]; then
+    printf '[]\n' >"$SERVERS_JSON"
+  fi
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "WARN: jq not found, skip servers.json update"
+    return 0
+  fi
+
+  if ! jq -e 'type == "array"' "$SERVERS_JSON" >/dev/null 2>&1; then
+    cp -a "$SERVERS_JSON" "$SERVERS_JSON.v168f-bad-$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
+    printf '[]\n' >"$SERVERS_JSON"
+  fi
+
+  if jq -e --arg link "$link" '
+    any(.[]?;
+      (.link? == $link) or
+      (.url? == $link) or
+      (.raw? == $link) or
+      (.uri? == $link)
+    )
+  ' "$SERVERS_JSON" >/dev/null 2>&1; then
+    echo "OK: HY2 already exists in $SERVERS_JSON"
+    return 0
+  fi
+
+  id="manual_hy2_$(date +%s)_$(hash_link "$link" | cut -c1-8)"
+  tmp="/tmp/subsync-servers-v168f-$$.json"
+
+  jq \
+    --arg id "$id" \
+    --arg name "$name" \
+    --arg link "$link" \
+    '. + [{
+      id: $id,
+      name: $name,
+      type: "hysteria2",
+      protocol: "hysteria2",
+      link: $link,
+      url: $link,
+      raw: $link,
+      uri: $link,
+      source: "manual-hy2-v168f-urltest",
+      manual: true
+    }]' "$SERVERS_JSON" >"$tmp"
+
+  cp -a "$SERVERS_JSON" "$SERVERS_JSON.v168f-before-$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
+  mv "$tmp" "$SERVERS_JSON"
+
+  echo "OK: HY2 ensured in $SERVERS_JSON"
+}
+
+add_hy2() {
+  name="$(clean_name "${2:-${SUBSYNC_MANUAL_NAME:-Manual HY2}}")"
+  link="$(clean_link "${3:-${SUBSYNC_MANUAL_LINK:-}}")"
+
+  [ -n "$name" ] || name="Manual HY2"
+
+  if ! is_hy2 "$link"; then
+    echo "ERROR: not HY2 link. Use hy2:// or hysteria2://" >&2
+    exit 2
+  fi
+
+  export SUBSYNC_MANUAL_NAME="$name"
+  export SUBSYNC_MANUAL_LINK="$link"
+  export SUBSYNC_MANUAL_TYPE="hysteria2"
+
+  mkdir -p /etc/sub-sync
+
+  if [ -x "$PREV" ]; then
+    "$PREV" add-hy2 "$name" "$link" >/tmp/subsync-v168f-prev.out 2>&1 \
+      || "$PREV" add "$name" "$link" >/tmp/subsync-v168f-prev.out 2>&1 \
+      || SUBSYNC_MANUAL_NAME="$name" SUBSYNC_MANUAL_LINK="$link" SUBSYNC_MANUAL_TYPE="hysteria2" "$PREV" >/tmp/subsync-v168f-prev.out 2>&1 \
+      || true
+
+    cat /tmp/subsync-v168f-prev.out 2>/dev/null || true
+  fi
+
+  if ! grep -F -- "$link" "$MANUAL_STORE" >/dev/null 2>&1; then
+    printf '%s\t%s\t%s\t%s\n' "$(date +%s)" "hysteria2" "$name" "$link" >>"$MANUAL_STORE"
+  fi
+
+  ensure_servers_json "$name" "$link"
+  add_to_urltest "$name" "$link"
+
+  echo "OK: HY2 manual server added and pushed to URL Test"
+}
+
+ensure_hy2() {
+  name="$(clean_name "${2:-Manual HY2}")"
+  link="$(clean_link "${3:-}")"
+
+  ensure_servers_json "$name" "$link"
+  add_to_urltest "$name" "$link"
+
+  echo "OK: HY2 ensured in servers.json and URL Test"
+}
+
+sync_hy2_urltest() {
+  tmp="/tmp/subsync-hy2-urltest-v168f-$$.tsv"
+  : >"$tmp"
+
+  if [ -f "$SERVERS_JSON" ] && command -v jq >/dev/null 2>&1; then
+    jq -r '
+      .[]?
+      | select(
+          (.type? | tostring | test("hysteria2|hy2"; "i")) or
+          (.protocol? | tostring | test("hysteria2|hy2"; "i")) or
+          (.link? | tostring | test("^(hy2|hysteria2)://"; "i")) or
+          (.url? | tostring | test("^(hy2|hysteria2)://"; "i")) or
+          (.raw? | tostring | test("^(hy2|hysteria2)://"; "i")) or
+          (.uri? | tostring | test("^(hy2|hysteria2)://"; "i"))
+        )
+      | [(.name // "Manual HY2"), (.link // .url // .raw // .uri // "")] | @tsv
+    ' "$SERVERS_JSON" >>"$tmp" 2>/dev/null || true
+  fi
+
+  if [ -f "$MANUAL_STORE" ]; then
+    awk -F '\t' '
+      $2 ~ /hysteria2|hy2/ && $4 ~ /^(hy2|hysteria2):\/\// {
+        print $3 "\t" $4
+      }
+    ' "$MANUAL_STORE" >>"$tmp" 2>/dev/null || true
+  fi
+
+  count=0
+
+  sort -u "$tmp" | while IFS="$(printf '\t')" read -r name link; do
+    [ -n "$link" ] || continue
+    is_hy2 "$link" || continue
+    add_to_urltest "$name" "$link"
+    count=$((count + 1))
+  done
+
+  rm -f "$tmp"
+
+  echo "OK: existing HY2 links synced to URL Test"
+}
+
+list_hy2() {
+  echo "### URL Test section"
+  if sec="$(detect_urltest_section)"; then
+    echo "SECTION=$sec"
+    echo "HY2 URL Test entries:"
+    uci -q show "podkop.$sec.urltest_proxy_links" 2>/dev/null \
+      | grep -Ei 'hy2://|hysteria2://' \
+      | sed 's#hy2://.*#hy2://***#;s#hysteria2://.*#hysteria2://***#' \
+      || echo "none"
+  else
+    echo "URL Test section not found"
+  fi
+
+  echo
+  echo "### servers.json HY2 names"
+  if [ -f "$SERVERS_JSON" ] && command -v jq >/dev/null 2>&1; then
+    jq -r '
+      .[]?
+      | select(
+          (.type? | tostring | test("hysteria2|hy2"; "i")) or
+          (.protocol? | tostring | test("hysteria2|hy2"; "i")) or
+          (.link? | tostring | test("^(hy2|hysteria2)://"; "i")) or
+          (.url? | tostring | test("^(hy2|hysteria2)://"; "i"))
+        )
+      | [.name, (.type // .protocol // "hysteria2")] | @tsv
+    ' "$SERVERS_JSON"
+  else
+    echo "no servers.json or jq missing"
+  fi
+}
+
+case "$cmd" in
+  add-hy2)
+    add_hy2 "$@"
+    ;;
+  ensure-hy2)
+    ensure_hy2 "$@"
+    ;;
+  urltest-hy2|apply-hy2-urltest)
+    add_to_urltest "${2:-Manual HY2}" "${3:-}"
+    ;;
+  sync-hy2-urltest)
+    sync_hy2_urltest
+    ;;
+  list-hy2|list|show|list-urltest)
+    list_hy2
+    ;;
+  add)
+    add_hy2 "$@"
+    ;;
+  *)
+    if [ $# -ge 2 ]; then
+      name="$1"
+      link="$2"
+      set -- add-hy2 "$name" "$link"
+      add_hy2 "$@"
+    else
+      list_hy2
+    fi
+    ;;
+esac
+# SUBSYNC_HY2_URLTEST_V168F_END

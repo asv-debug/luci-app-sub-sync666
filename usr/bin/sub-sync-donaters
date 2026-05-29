@@ -1,0 +1,228 @@
+#!/bin/sh
+# SUBSYNC_DONATERS_RW_HELPER_V148_FLEX_ROW
+set -u
+
+DIR="/etc/sub-sync"
+DATA="$DIR/donaters.tsv"
+ROWS=12
+
+mkdir -p "$DIR"
+[ -f "$DATA" ] || : > "$DATA"
+chmod 600 "$DATA" 2>/dev/null || true
+
+cmd="${1:-get}"
+
+sanitize_field() {
+  printf '%s' "${1:-}" | tr '\t\r\n' '   ' | sed 's/  */ /g' | cut -c1-300
+}
+
+json_get() {
+  awk -v rows="$ROWS" '
+    BEGIN {
+      FS = "\t";
+      printf "{\"items\":[";
+    }
+
+    function esc(s) {
+      gsub(/\\/, "\\\\", s);
+      gsub(/"/, "\\\"", s);
+      gsub(/\r/, "", s);
+      gsub(/\n/, "", s);
+      return s;
+    }
+
+    NF {
+      if ($1 ~ /^[0-9]+$/ && NF >= 4) {
+        i = $1;
+        en[i] = $2;
+        nick[i] = $3;
+        url[i] = $4;
+      } else {
+        c++;
+        i = c;
+        en[i] = $1;
+        nick[i] = $2;
+        url[i] = $3;
+      }
+    }
+
+    END {
+      for (i = 1; i <= rows; i++) {
+        if (i > 1)
+          printf ",";
+
+        e = "false";
+        if (en[i] == "1" || en[i] == "true" || en[i] == "yes" || en[i] == "on")
+          e = "true";
+
+        printf "{\"row\":%d,\"enabled\":%s,\"nick\":\"%s\",\"url\":\"%s\"}", i, e, esc(nick[i]), esc(url[i]);
+      }
+
+      print "]}";
+    }
+  ' "$DATA"
+}
+
+json_val() {
+  key="$1"
+  src="$2"
+
+  if command -v jsonfilter >/dev/null 2>&1; then
+    printf '%s' "$src" | jsonfilter -e "@.$key" 2>/dev/null || true
+    return 0
+  fi
+
+  case "$key" in
+    row)
+      printf '%s' "$src" | sed -n 's/.*"row"[[:space:]]*:[[:space:]]*"\{0,1\}\([0-9][0-9]*\)"\{0,1\}.*/\1/p' | head -n 1
+    ;;
+    enabled)
+      printf '%s' "$src" | sed -n 's/.*"enabled"[[:space:]]*:[[:space:]]*"\{0,1\}\([^",}]*\)"\{0,1\}.*/\1/p' | head -n 1
+    ;;
+    nick)
+      printf '%s' "$src" | sed -n 's/.*"nick"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1
+    ;;
+    url)
+      printf '%s' "$src" | sed -n 's/.*"url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1
+    ;;
+  esac
+}
+
+extract_row_number() {
+  printf '%s' "${1:-}" | sed -n '
+    s/.*"row"[[:space:]]*:[[:space:]]*"\{0,1\}\([0-9][0-9]*\)"\{0,1\}.*/\1/p
+    t done
+    s/.*row[=:#[:space:]]*\([0-9][0-9]*\).*/\1/p
+    t done
+    s/[^0-9]*\([0-9][0-9]*\).*/\1/p
+    :done
+  ' | head -n 1
+}
+
+normalize_enabled() {
+  case "${1:-0}" in
+    1|true|TRUE|True|yes|YES|on|ON|enabled|ENABLED)
+      printf '1'
+    ;;
+    *)
+      printf '0'
+    ;;
+  esac
+}
+
+case "$cmd" in
+  get|list|public|"")
+    logger -t sub-sync "donaters public get"
+    json_get
+  ;;
+
+  set|save)
+    arg2="${2:-}"
+    arg3="${3:-}"
+    arg4="${4:-}"
+    arg5="${5:-}"
+
+    row=""
+    enabled=""
+    nick=""
+    url=""
+
+    case "$arg2" in
+      \{*|\[*)
+        row="$(json_val row "$arg2")"
+        enabled="$(json_val enabled "$arg2")"
+        nick="$(json_val nick "$arg2")"
+        url="$(json_val url "$arg2")"
+      ;;
+      row=*|enabled=*|nick=*|url=*)
+        for a in "$@"; do
+          case "$a" in
+            row=*) row="${a#row=}" ;;
+            enabled=*) enabled="${a#enabled=}" ;;
+            nick=*) nick="${a#nick=}" ;;
+            url=*) url="${a#url=}" ;;
+          esac
+        done
+      ;;
+      *)
+        row="$(extract_row_number "$arg2")"
+        enabled="$arg3"
+        nick="$arg4"
+        url="$arg5"
+      ;;
+    esac
+
+    [ -n "$row" ] || row="$(extract_row_number "$arg2")"
+
+    if [ -z "$row" ]; then
+      logger -t sub-sync "donaters set invalid row argc=$# arg2=$(printf '%s' "$arg2" | cut -c1-40)"
+      echo "Error: invalid row" >&2
+      exit 1
+    fi
+
+    case "$row" in
+      *[!0-9]*)
+        logger -t sub-sync "donaters set invalid numeric row=$row"
+        echo "Error: invalid row" >&2
+        exit 1
+      ;;
+    esac
+
+    if [ "$row" -lt 1 ] || [ "$row" -gt "$ROWS" ]; then
+      logger -t sub-sync "donaters set row out of range row=$row"
+      echo "Error: row out of range" >&2
+      exit 1
+    fi
+
+    enabled="$(normalize_enabled "$enabled")"
+    nick="$(sanitize_field "$nick")"
+    url="$(sanitize_field "$url")"
+
+    tmp="/tmp/sub-sync-donaters.$$"
+
+    awk -v rows="$ROWS" -v R="$row" -v E="$enabled" -v N="$nick" -v U="$url" '
+      BEGIN {
+        FS = OFS = "\t";
+      }
+
+      NF {
+        if ($1 ~ /^[0-9]+$/ && NF >= 4) {
+          i = $1;
+          en[i] = $2;
+          nick[i] = $3;
+          url[i] = $4;
+        } else {
+          c++;
+          i = c;
+          en[i] = $1;
+          nick[i] = $2;
+          url[i] = $3;
+        }
+      }
+
+      END {
+        en[R] = E;
+        nick[R] = N;
+        url[R] = U;
+
+        for (i = 1; i <= rows; i++) {
+          if (en[i] != "1")
+            en[i] = "0";
+
+          print i, en[i], nick[i], url[i];
+        }
+      }
+    ' "$DATA" > "$tmp" && mv "$tmp" "$DATA"
+
+    chmod 600 "$DATA" 2>/dev/null || true
+
+    logger -t sub-sync "donaters set row=$row enabled=$enabled"
+
+    printf '{"ok":true,"row":%s}\n' "$row"
+  ;;
+
+  *)
+    echo "Error: unsupported command: $cmd" >&2
+    exit 1
+  ;;
+esac

@@ -101,10 +101,10 @@ echo ""
 PODKOP_MENU="/usr/share/luci/menu.d/luci-app-podkop.json"
 PODKOP_BAK="/usr/share/luci/menu.d/luci-app-podkop.json.bak.subsync"
 
-BACKUP="/root/podcop-sub-v666-before-uninstall-$(date +%Y%m%d-%H%M%S).tar.gz"
+BACKUP="/tmp/podcop-sub-v666-no-backup-uninstall +%Y%m%d-%H%M%S).tar.gz"
 
 echo "→ Бэкап перед удалением..."
-tar -czf "$BACKUP" -C / \
+echo "  - public build: backup disabled"
   usr/share/luci/menu.d/luci-app-podkop.json \
   usr/share/luci/menu.d/luci-app-podkop.json.bak.subsync \
   usr/share/luci/menu.d/luci-app-sub-sync.json \
@@ -356,3 +356,38 @@ rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev
 /etc/init.d/rpcd restart >/dev/null 2>&1 || true
 /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
 # SUBSYNC_PUBLIC_UNINSTALL_V196_CLEAN_STALE_UI_END
+
+# SUBSYNC_PUBLIC_UNINSTALL_V201B_NO_FRIEND_BACKUPS_BEGIN
+echo "[Sub Sync] v201b uninstall: no tar backup"
+
+rm -f \
+  /usr/bin/sub-sync-happ-json-hy2-import \
+  /usr/bin/sub-sync-hy2-manager \
+  /usr/bin/sub-sync-hy2-probe \
+  /usr/bin/sub-sync-hy2-urltest \
+  /usr/bin/sub-sync-xhttp-guard \
+  /usr/bin/sub-sync-singbox-check \
+  /usr/bin/sub-sync-public-ui-patch 2>/dev/null || true
+
+cat > /usr/share/luci/menu.d/luci-app-podkop.json <<'MENUJSON'
+{
+  "admin/services/podkop": {
+    "title": "Podkop",
+    "order": 60,
+    "action": {
+      "type": "view",
+      "path": "podkop/podkop"
+    },
+    "depends": {
+      "acl": [ "luci-app-podkop" ]
+    }
+  }
+}
+MENUJSON
+
+rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev/null || true
+/etc/init.d/rpcd restart >/dev/null 2>&1 || true
+/etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+
+echo "[Sub Sync] v201b uninstall complete"
+# SUBSYNC_PUBLIC_UNINSTALL_V201B_NO_FRIEND_BACKUPS_END

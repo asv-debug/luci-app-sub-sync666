@@ -1,0 +1,128 @@
+#!/bin/sh
+# SUBSYNC_HY2_BACKEND_V170
+set -u
+
+cmd="${1:-}"
+
+mask() {
+  printf '%s\n' "$1" | sed -E 's#^(hy2|hysteria2)://[^@[:space:]]+@#\1://***@#g'
+}
+
+is_hy2() {
+  case "$1" in
+    hy2://*|hysteria2://*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+select_hy2() {
+  section="${1:-}"
+  name="${2:-Manual HY2}"
+  link="${3:-}"
+
+  [ -n "$section" ] || { echo "ERROR: section empty"; exit 1; }
+  [ -n "$link" ] || { echo "ERROR: link empty"; exit 1; }
+  is_hy2 "$link" || { echo "ERROR: only hy2:// or hysteria2://"; exit 1; }
+
+  case "$section" in
+    *[!A-Za-z0-9_]*)
+      echo "ERROR: section name only A-Z a-z 0-9 _"
+      exit 1
+    ;;
+  esac
+
+  echo "Import HY2:"
+  echo "Name: $name"
+  echo "Link: $(mask "$link")"
+
+  /usr/bin/sub-sync-manual-link add-link "$link" "$name" || true
+  /usr/bin/sub-sync-manual-link merge || true
+
+  echo
+  echo "Apply via sub-sync-urltest apply-link:"
+  /usr/bin/sub-sync-urltest apply-link "$section" "$link"
+
+  echo
+  echo "Restart Podkop..."
+  /etc/init.d/podkop restart || true
+  sleep 5
+
+  echo
+  echo "=== podkop.$section ==="
+  uci -q show "podkop.$section" | sed -E 's#(hy2|hysteria2)://[^@[:space:]]+@#\1://***@#g' || true
+
+  echo
+  echo "=== config HY2 markers ==="
+  grep -nE '"type": "hysteria2"|hysteria2|hy2|urltest' /etc/sing-box/config.json 2>/dev/null | head -120 || true
+
+  echo
+  echo "=== sing-box check ==="
+  sing-box check -c /etc/sing-box/config.json
+
+  echo
+  echo "DONE select HY2"
+}
+
+delete_hy2() {
+  section="${1:-}"
+  link="${2:-}"
+
+  [ -n "$section" ] || { echo "ERROR: section empty"; exit 1; }
+
+  echo "Delete HY2 from section: $section"
+  [ -n "$link" ] && echo "Link: $(mask "$link")"
+
+  if [ -n "$link" ]; then
+    uci -q del_list "podkop.$section.urltest_proxy_links=$link" || true
+  else
+    uci -q show podkop \
+      | sed -n "s/^\(podkop\.$section\.urltest_proxy_links\)='\(.*\)'$/\1|\2/p" \
+      | while IFS='|' read -r opt val; do
+          case "$val" in
+            hy2://*|hysteria2://*)
+              echo "remove: $opt=$(mask "$val")"
+              uci -q del_list "$opt=$val" || true
+            ;;
+          esac
+        done
+  fi
+
+  left="$(uci -q get "podkop.$section.urltest_proxy_links" 2>/dev/null || true)"
+  if [ -z "$left" ]; then
+    echo "Section $section has no urltest_proxy_links, disable proxy section to avoid Podkop fatal"
+    uci -q set "podkop.$section.connection_type=disabled" || true
+    uci -q set "podkop.$section.enabled=0" || true
+    uci -q delete "podkop.$section.urltest_proxy_links" 2>/dev/null || true
+  fi
+
+  uci commit podkop
+
+  echo
+  echo "Restart Podkop..."
+  /etc/init.d/podkop restart || true
+  sleep 5
+
+  echo
+  echo "=== HY2 must be absent ==="
+  grep -nE '"type": "hysteria2"|hysteria2|hy2|se2\.belka\.network' /etc/sing-box/config.json 2>/dev/null || echo "OK: no HY2"
+
+  echo
+  echo "=== sing-box check ==="
+  sing-box check -c /etc/sing-box/config.json
+
+  echo
+  echo "DONE delete HY2"
+}
+
+case "$cmd" in
+  select) select_hy2 "${2:-}" "${3:-Manual HY2}" "${4:-}" ;;
+  delete) delete_hy2 "${2:-}" "${3:-}" ;;
+  check) sing-box check -c /etc/sing-box/config.json ;;
+  *)
+    echo "Usage:"
+    echo "  $0 select SECTION 'Manual HY2' 'hysteria2://...'"
+    echo "  $0 delete SECTION 'hysteria2://...'"
+    echo "  $0 check"
+    exit 1
+  ;;
+esac
