@@ -1,9 +1,9 @@
 {
-  "version": "v263",
-  "build": 263,
-  "title": "Вышло обновление Podcop Sub v666 v263",
-  "message": "Автоустановка темы ProtoByZKS95, отдельное меню Подписки / Мониторинг после обновления Podkop, живой таймер обновления и понятная проверка версии.",
-  "required_marker": "SUBSYNC_INSTALL_VERSION_FILES_V263_BEGIN",
+  "version": "v264",
+  "build": 264,
+  "title": "Вышло обновление Podcop Sub v666 v264",
+  "message": "Добавлена постоянная защита Podkop xHTTP patch: guard восстанавливает patch и меню после обновления Podkop.",
+  "required_marker": "SUBSYNC_INSTALL_VERSION_FILES_V264_BEGIN",
   "install_url": "https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main/install.sh",
-  "released_at": "2026-05-30 00:57:31 +0400"
+  "released_at": "2026-05-30 01:05:52 +0400"
 }

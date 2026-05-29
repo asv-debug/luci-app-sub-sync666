@@ -1,0 +1,9 @@
+#!/bin/sh /etc/rc.common
+# PODCOP_SUB_V666_GUARD_INIT_V264
+START=99
+STOP=10
+USE_PROCD=1
+
+start_service() {
+  /usr/bin/podcop-sub-v666-guard >/tmp/podcop-sub-v666-guard-boot.log 2>&1 || true
+}

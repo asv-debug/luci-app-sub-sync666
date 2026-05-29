@@ -1,0 +1,73 @@
+#!/bin/sh
+# PODCOP_SUB_V666_PERSISTENT_GUARD_V264
+
+LOGTAG="podcop-sub-v666-guard"
+MENU_FILE="/usr/share/luci/menu.d/luci-app-sub-sync.json"
+FACADE="/usr/lib/podkop/sing_box_config_facade.sh"
+MANAGER="/usr/lib/podkop/sing_box_config_manager.sh"
+
+log() {
+  logger -t "$LOGTAG" "$*" 2>/dev/null || true
+  echo "$*"
+}
+
+need_repair=0
+changed=0
+
+if ! grep -q 'xhttp|http)' "$FACADE" 2>/dev/null; then
+  log "xHTTP facade patch missing"
+  need_repair=1
+fi
+
+if ! grep -q 'sing_box_cm_set_xhttp_transport' "$MANAGER" 2>/dev/null; then
+  log "xHTTP manager patch missing"
+  need_repair=1
+fi
+
+if [ "$need_repair" = "1" ]; then
+  if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
+    log "re-applying Podkop xHTTP patch"
+    if /usr/bin/podcop-sub-v666-xhttp-patch; then
+      changed=1
+      log "xHTTP patch repaired"
+    else
+      log "ERROR: xHTTP patch command failed"
+    fi
+  else
+    log "ERROR: /usr/bin/podcop-sub-v666-xhttp-patch not found"
+  fi
+fi
+
+mkdir -p /usr/share/luci/menu.d
+
+if ! grep -Rqs 'Подписки / Мониторинг' /usr/share/luci/menu.d/*.json 2>/dev/null; then
+  log "menu missing, restoring Подписки / Мониторинг"
+  cat > "$MENU_FILE" <<'MENU'
+{
+  "admin/services/podkop/sub_sync": {
+    "title": "Подписки / Мониторинг",
+    "order": 95,
+    "action": {
+      "type": "view",
+      "path": "sub_sync/sub_sync"
+    },
+    "depends": {
+      "acl": [ "luci-app-sub-sync" ]
+    }
+  }
+}
+MENU
+  changed=1
+fi
+
+if [ "$changed" = "1" ]; then
+  log "clearing LuCI cache after repair"
+  rm -rf /tmp/luci-modulecache /tmp/luci-modulecache/* /tmp/luci-indexcache /tmp/luci-indexcache* /tmp/luci-sessions /tmp/luci-sessions/* 2>/dev/null || true
+  /etc/init.d/rpcd restart >/dev/null 2>&1 || true
+  /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+  log "repair complete"
+else
+  log "OK"
+fi
+
+exit 0
