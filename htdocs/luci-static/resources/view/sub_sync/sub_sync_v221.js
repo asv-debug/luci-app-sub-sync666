@@ -5703,3 +5703,144 @@ return view.extend({
 
 /* SUBSYNC_UPDATE_CHECK_TEXT_V261 */
 /* SUBSYNC_UPDATE_REAL_REPORT_TIMER_V261 */
+
+/* SUBSYNC_UI_UPDATE_LIVE_TIMER_V263 */
+(function(){
+  try {
+    if (window.__subsyncUiUpdateLiveTimerV263) return;
+    window.__subsyncUiUpdateLiveTimerV263 = true;
+
+    function pad(n){ n = Number(n)||0; return n < 10 ? '0' + n : String(n); }
+    function fmt(sec){ sec = Number(sec)||0; return pad(Math.floor(sec / 60)) + ':' + pad(sec % 60); }
+
+    function findCard(el) {
+      var n = el;
+      while (n && n !== document.body) {
+        var text = String(n.textContent || '');
+        var cls = String(n.className || '');
+        if (/Обновление Модуля|module-update/i.test(text) || /module-update|ss-module/i.test(cls))
+          return n;
+        n = n.parentNode;
+      }
+
+      var nodes = document.querySelectorAll('div,section,fieldset');
+      for (var i = 0; i < nodes.length; i++) {
+        if (/Обновление Модуля/i.test(String(nodes[i].textContent || '')))
+          return nodes[i];
+      }
+
+      return document.body;
+    }
+
+    function ensureBox(card) {
+      if (!card) return null;
+      var box = card.querySelector ? card.querySelector('.ss-update-live-timer-v263') : null;
+      if (box) return box;
+
+      box = document.createElement('div');
+      box.className = 'ss-update-live-timer-v263';
+      box.style.cssText = [
+        'margin-top:10px',
+        'padding:10px 12px',
+        'border-radius:12px',
+        'border:1px solid rgba(125,255,157,.35)',
+        'background:rgba(0,0,0,.24)',
+        'color:#eaffef',
+        'font-size:13px',
+        'line-height:1.45',
+        'box-shadow:0 0 16px rgba(125,255,157,.12)'
+      ].join(';');
+
+      try { card.appendChild(box); } catch(e) { document.body.appendChild(box); }
+      return box;
+    }
+
+    function startUpdateTimer(card) {
+      var box = ensureBox(card);
+      if (!box) return;
+
+      if (window.__subsyncUiUpdateLiveTimerV263Interval)
+        clearInterval(window.__subsyncUiUpdateLiveTimerV263Interval);
+
+      var started = Date.now();
+      var steps = [
+        'Скачиваю version.json',
+        'Проверяю доступность обновления',
+        'Скачиваю install.sh',
+        'Проверяю защитный marker',
+        'Запускаю установку',
+        'Ставлю тему и меню',
+        'Очищаю LuCI cache',
+        'Ожидаю перезапуск LuCI'
+      ];
+
+      function render() {
+        var sec = Math.floor((Date.now() - started) / 1000);
+        var idx = Math.min(steps.length - 1, Math.floor(sec / 3));
+        box.innerHTML =
+          '<b style="color:#7dff9d">Обновление модуля запущено</b><br>' +
+          'Время: <b>' + fmt(sec) + '</b><br>' +
+          'Текущий шаг: <b>' + steps[idx] + '</b><br>' +
+          '<span style="opacity:.78">Не закрывайте страницу. Если LuCI перезапустится — войдите заново.</span>';
+      }
+
+      render();
+      window.__subsyncUiUpdateLiveTimerV263Interval = setInterval(render, 1000);
+    }
+
+    function showChecking(card) {
+      var box = ensureBox(card);
+      if (!box) return;
+      box.innerHTML =
+        '<b style="color:#ffd86b">Проверяю версию...</b><br>' +
+        'Сравниваю локальную и последнюю версию.';
+    }
+
+    function stopWithText(text) {
+      if (window.__subsyncUiUpdateLiveTimerV263Interval)
+        clearInterval(window.__subsyncUiUpdateLiveTimerV263Interval);
+
+      var box = document.querySelector('.ss-update-live-timer-v263');
+      if (box)
+        box.innerHTML = text;
+    }
+
+    document.addEventListener('click', function(ev) {
+      var t = ev.target;
+      if (!t) return;
+
+      var txt = String(t.textContent || '').trim();
+      var card = findCard(t);
+
+      if (/обнов/i.test(txt) && !/провер/i.test(txt))
+        startUpdateTimer(card);
+
+      if (/провер/i.test(txt))
+        showChecking(card);
+    }, true);
+
+    setInterval(function() {
+      var body = String(document.body && document.body.textContent || '');
+
+      if (/У вас последняя версия|Обновление не требуется|UP_TO_DATE|Обновлений нет/i.test(body)) {
+        stopWithText(
+          '<b style="color:#7dff9d">Проверка завершена</b><br>' +
+          'У вас последняя версия. Обновление не требуется.'
+        );
+      }
+
+      if (/DONE:\s*install\.sh finished rc=0|installed\. LuCI will restart/i.test(body)) {
+        stopWithText(
+          '<b style="color:#7dff9d">Обновление установлено</b><br>' +
+          'LuCI сейчас перезапустится. После входа откройте Services → Podkop.'
+        );
+      }
+
+      if (/UPDATE_AVAILABLE|Доступно обновление|Вышло обновление/i.test(body) && !/У вас последняя версия/i.test(body)) {
+        var box = document.querySelector('.ss-update-live-timer-v263');
+        if (box && !window.__subsyncUiUpdateLiveTimerV263Interval)
+          box.innerHTML = '<b style="color:#ffd86b">Доступно обновление.</b><br>Нажмите «Обновить модуль».';
+      }
+    }, 1000);
+  } catch(e) {}
+})();

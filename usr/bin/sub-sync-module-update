@@ -1,5 +1,5 @@
 #!/bin/sh
-# SUBSYNC_MODULE_UPDATE_HELPER_V261
+# SUBSYNC_MODULE_UPDATE_HELPER_V263
 set -u
 
 RAW_BASE="${SUBSYNC_RAW_BASE:-https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main}"
@@ -7,37 +7,20 @@ VERSION_URL="$RAW_BASE/version.json?v=$(date +%s)"
 LOCAL_BUILD_FILE="/etc/sub-sync/module-build"
 LOCAL_VERSION_FILE="/etc/sub-sync/module-version"
 
-json_get() {
-  sed -n 's/.*"'$1'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$2" | head -n1
-}
-
-json_get_num() {
-  sed -n 's/.*"'$1'"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$2" | head -n1
-}
-
-local_build() {
-  cat "$LOCAL_BUILD_FILE" 2>/dev/null | tr -dc '0-9' | head -c 10
-}
-
-local_version() {
-  cat "$LOCAL_VERSION_FILE" 2>/dev/null | head -n1
-}
-
-download_version() {
-  tmp="$1"
-  wget -qO "$tmp" "$VERSION_URL"
-}
+json_get() { sed -n 's/.*"'$1'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$2" | head -n1; }
+json_get_num() { sed -n 's/.*"'$1'"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$2" | head -n1; }
+local_build() { cat "$LOCAL_BUILD_FILE" 2>/dev/null | tr -dc '0-9' | head -c 10; }
+local_version() { cat "$LOCAL_VERSION_FILE" 2>/dev/null | head -n1; }
 
 cmd_check() {
   vf="/tmp/subsync-version-check-$$.json"
-  lb="$(local_build)"
-  lv="$(local_version)"
+  lb="$(local_build)"; lv="$(local_version)"
   [ -n "$lb" ] || lb=0
   [ -n "$lv" ] || lv="unknown"
 
-  echo "=== Podcop Sub v666 update check v261 ==="
+  echo "=== Podcop Sub v666 update check v263 ==="
 
-  if ! download_version "$vf"; then
+  if ! wget -qO "$vf" "$VERSION_URL"; then
     echo "STATUS=ERROR"
     echo "CURRENT_VERSION=$lv"
     echo "CURRENT_BUILD=$lb"
@@ -83,17 +66,16 @@ cmd_update() {
   vf="/tmp/subsync-version-update-$$.json"
   inst="/tmp/subsync-install-update-$$.sh"
 
-  lb="$(local_build)"
-  lv="$(local_version)"
+  lb="$(local_build)"; lv="$(local_version)"
   [ -n "$lb" ] || lb=0
   [ -n "$lv" ] || lv="unknown"
 
-  echo "=== Podcop Sub v666 update v261 ==="
+  echo "=== Podcop Sub v666 update v263 ==="
   echo "[00:00] Старт обновления"
   echo "[00:00] Текущая версия: $lv ($lb)"
-
   echo "[00:00] [1/7] Скачиваю version.json"
-  if ! download_version "$vf"; then
+
+  if ! wget -qO "$vf" "$VERSION_URL"; then
     echo "ERROR: Не удалось скачать version.json"
     rm -f "$vf" "$inst"
     exit 1
@@ -118,11 +100,7 @@ cmd_update() {
   fi
 
   echo "[00:00] [2/7] Скачиваю install.sh"
-  if ! wget -qO "$inst" "$url?v=$(date +%s)"; then
-    echo "ERROR: Не удалось скачать install.sh"
-    rm -f "$vf" "$inst"
-    exit 1
-  fi
+  wget -qO "$inst" "$url?v=$(date +%s)" || { echo "ERROR: Не удалось скачать install.sh"; rm -f "$vf" "$inst"; exit 1; }
 
   echo "[00:00] [3/7] Проверяю защитный marker"
   if [ -n "$marker" ] && ! grep -q "$marker" "$inst"; then
@@ -133,11 +111,7 @@ cmd_update() {
   fi
 
   echo "[00:00] [4/7] Проверяю синтаксис install.sh"
-  if ! sh -n "$inst"; then
-    echo "ERROR: install.sh не прошёл sh -n"
-    rm -f "$vf" "$inst"
-    exit 3
-  fi
+  sh -n "$inst" || { echo "ERROR: install.sh не прошёл sh -n"; rm -f "$vf" "$inst"; exit 3; }
 
   echo "[00:00] [5/7] Запускаю установку $rv"
   sh "$inst"
@@ -148,11 +122,7 @@ cmd_update() {
 
   echo "[$elapsed сек] [6/7] install.sh завершился rc=$rc"
 
-  if [ "$rc" -ne 0 ]; then
-    echo "ERROR: установка завершилась с ошибкой rc=$rc"
-    rm -f "$vf" "$inst"
-    exit "$rc"
-  fi
+  [ "$rc" -eq 0 ] || { echo "ERROR: установка завершилась с ошибкой rc=$rc"; rm -f "$vf" "$inst"; exit "$rc"; }
 
   echo "[$elapsed сек] [7/7] Готово"
   echo "DONE: install.sh finished rc=0"
