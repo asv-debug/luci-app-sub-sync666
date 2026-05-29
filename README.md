@@ -4,6 +4,9 @@
 
 <h1 align="center">Podcop Sub v666 by ZKS95</h1>
 
+<img width="838" height="758" alt="chrome_9r2XRBcsNm" src="https://github.com/user-attachments/assets/0d126afc-848e-4981-bd36-82511a9a019b" />
+
+
 <p align="center">
   LuCI-модуль для OpenWrt: синхронизация proxy-подписок, управление серверами, интеграция в Podkop, поддержка xHTTP/VLESS, AutoPick, ping-проверка и публичный блок донатеров.
 </p>
