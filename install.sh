@@ -79,7 +79,7 @@ rm -f /usr/share/luci/menu.d/luci-app-sub-sync.json 2>/dev/null || true
 
 echo "=== apply Podkop xHTTP patch ==="
 if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
-  /usr/bin/podcop-sub-v666-xhttp-patch install || true
+  /usr/bin/podcop-sub-v666-xhttp-patch apply || true
 fi
 
 echo "=== clear LuCI cache ==="

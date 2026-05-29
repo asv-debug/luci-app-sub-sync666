@@ -27,7 +27,7 @@ MENU
 
 echo "=== restore Podkop xHTTP patch if helper exists ==="
 if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
-  /usr/bin/podcop-sub-v666-xhttp-patch uninstall || true
+  /usr/bin/podcop-sub-v666-xhttp-patch restore || true
 fi
 
 echo "=== remove public module files ==="
