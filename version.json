@@ -5,5 +5,5 @@
   "message": "Очищен installer от старых накопленных блоков, добавлен понятный вывод проверки версии и улучшенный отчёт обновления с таймингом.",
   "required_marker": "SUBSYNC_INSTALL_VERSION_FILES_V261_BEGIN",
   "install_url": "https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main/install.sh",
-  "released_at": "2026-05-30 00:04:09 +0400"
+  "released_at": "2026-05-29 23:59:59 +0000"
 }
