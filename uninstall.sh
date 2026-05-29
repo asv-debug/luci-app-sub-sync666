@@ -336,3 +336,15 @@ rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev
 /etc/init.d/rpcd restart >/dev/null 2>&1 || true
 /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
 # SUBSYNC_PUBLIC_UNINSTALL_V193_END
+
+# SUBSYNC_PUBLIC_UNINSTALL_V194_FIX_BASE_BEGIN
+rm -f \
+  /usr/bin/sub-sync-happ-json-hy2-import \
+  /usr/bin/sub-sync-hy2-manager \
+  /usr/bin/sub-sync-hy2-urltest \
+  /usr/bin/sub-sync-xhttp-guard \
+  /usr/bin/sub-sync-singbox-check 2>/dev/null || true
+rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev/null || true
+/etc/init.d/rpcd restart >/dev/null 2>&1 || true
+/etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+# SUBSYNC_PUBLIC_UNINSTALL_V194_FIX_BASE_END
