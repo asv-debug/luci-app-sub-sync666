@@ -1,9 +1,9 @@
 #!/bin/sh
-# PODCOP_SUB_V666_PUBLIC_UNINSTALL_CLEAN_V205B
+# PODCOP_SUB_V666_PUBLIC_UNINSTALL_CLEAN_V206
 set -u
 
 echo "========================================="
-echo "  Podcop Sub v666 — public uninstall v205b"
+echo "  Podcop Sub v666 — public uninstall v206"
 echo "========================================="
 echo "Backup: disabled for public/friend uninstall"
 
@@ -31,7 +31,7 @@ if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
 fi
 
 echo "=== remove public module files ==="
-rm -f /www/luci-static/resources/view/sub_sync/sub_sync.js 2>/dev/null || true
+rm -f /www/luci-static/resources/view/sub_sync/sub_sync.js /www/luci-static/resources/view/sub_sync/sub_sync_v206.js 2>/dev/null || true
 rm -f /usr/share/rpcd/acl.d/luci-app-sub-sync.json 2>/dev/null || true
 rm -f /usr/bin/podcop-sub-v666-xhttp-patch 2>/dev/null || true
 rm -f /usr/bin/sub-sync /usr/bin/sub-sync.real /usr/bin/sub-sync.v51base /usr/bin/sub-sync.v164manualbase 2>/dev/null || true
@@ -48,4 +48,4 @@ rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev
 /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
 /etc/init.d/podkop restart >/dev/null 2>&1 || true
 
-echo "Podcop Sub v666 public uninstall v205b complete"
+echo "Podcop Sub v666 public uninstall v206 complete"

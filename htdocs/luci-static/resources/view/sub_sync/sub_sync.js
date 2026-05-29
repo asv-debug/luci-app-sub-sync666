@@ -1855,7 +1855,7 @@ syncAllBtnStates(sec3);
 			}
 
 			globalSectionSelect.addEventListener('change', function() {
-	
+
 				updateTypeSelect();
 				var sec3 = globalSectionSelect.value;
 if (sec3) { syncAllBtnStates(sec3); ssHydrateActiveBadgesV28(sec3); }
@@ -2204,7 +2204,7 @@ if (!ssLinkInListV28(link2, myLinks)) {
 								});
 							}
 						}).catch(function(err) {
-	
+
 							ui.addNotification(null, E('p', {}, 'Ошибка: ' + (err.message || err)), 'danger');
 							btn.disabled = false; btn.textContent = 'Выбрать';
 						});
@@ -2995,7 +2995,7 @@ if (typeof window !== "undefined") window.setTimeout(function() { try { ssHydrat
                                    '.ss-widget__value .ss-label{color:#aeb4bb!important}',
                                    '.ss-widget__value .ss-val{word-break:break-word!important}'
                            ].join('\n')),
-				manualCardV53B, widgetsRow, sysWidgetsRowV96, wServerCard, sectionCreateCardV45B, subsCard, xhttpCard, autoPickCard, serversCard, donatersPublicCardV128, 
+				manualCardV53B, widgetsRow, sysWidgetsRowV96, subsCard, wServerCard, sectionCreateCardV45B, xhttpCard, autoPickCard, serversCard, donatersPublicCardV128,
 				E('div', { 'style': 'text-align:right;margin-top:8px' }, [
                                         E('span', { 'class': 'ss-version ss-version-hidden-v90', 'style': 'display:none!important' }, '')
 				])
@@ -3529,3 +3529,4 @@ return view.extend({
 	}
 });
 /* SUBSYNC_WIDGET_CENTER_PUBLIC_V205B */
+/* SUBSYNC_SUBS_CARD_TOP_V206 */
