@@ -1,10 +1,86 @@
 #!/bin/sh
-# SUBSYNC_WRAPPER_REAL_BACKEND_V212
+# SUBSYNC_WRAPPER_HAPP_HY2_DELETE_EMPTY_V221
+# includes SUBSYNC_WRAPPER_HAPP_HY2_DELETE_EMPTY_V220
+# includes SUBSYNC_WRAPPER_EMPTY_SUBS_EMPTY_SERVERS_V219
+# includes SUBSYNC_WRAPPER_DELETE_REBUILD_CACHE_V218
+# includes SUBSYNC_WRAPPER_SUBS_INFO_ALIAS_V213
+
 REAL="/usr/bin/sub-sync.real"
+HY2="/usr/bin/sub-sync-happ-json-hy2-import"
 
 if [ ! -x "$REAL" ]; then
   echo "ERROR: /usr/bin/sub-sync.real not found"
   exit 1
 fi
+
+empty_if_no_subs() {
+  mkdir -p /etc/sub-sync
+  subs="$("$REAL" list-subs 2>/dev/null || echo "[]")"
+
+  if printf '%s' "$subs" | grep -q '^\[\]$'; then
+    echo '[]' > /etc/sub-sync/servers.json
+    : > /etc/sub-sync/links.txt
+    echo "Нет подписок — servers.json очищен"
+    return 0
+  fi
+
+  return 1
+}
+
+rebuild_servers_cache() {
+  mkdir -p /etc/sub-sync
+
+  if empty_if_no_subs; then
+    return 0
+  fi
+
+  rm -f /etc/sub-sync/servers.json /etc/sub-sync/links.txt 2>/dev/null || true
+
+  "$REAL" sync 2>&1
+  rc="$?"
+
+  if [ "$rc" = "0" ] && [ -x "$HY2" ]; then
+    "$HY2" 2>&1 || true
+  fi
+
+  if [ ! -s /etc/sub-sync/servers.json ]; then
+    echo '[]' > /etc/sub-sync/servers.json
+  fi
+
+  return "$rc"
+}
+
+case "${1:-}" in
+  subs-info)
+    if [ -x /usr/bin/sub-sync-subs-info ]; then
+      exec /usr/bin/sub-sync-subs-info
+    fi
+  ;;
+
+  system-info)
+    if [ -x /usr/bin/sub-sync-system-info ]; then
+      exec /usr/bin/sub-sync-system-info
+    fi
+  ;;
+
+  singbox-log)
+    shift
+    if [ -x /usr/bin/sub-sync-singbox-log ]; then
+      exec /usr/bin/sub-sync-singbox-log "$@"
+    fi
+  ;;
+
+  sync|update|refresh)
+    rebuild_servers_cache
+    exit "$?"
+  ;;
+
+  add-sub|delete-sub|del-sub|remove-sub|delete-subscription)
+    "$REAL" "$@"
+    rc="$?"
+    rebuild_servers_cache || true
+    exit "$rc"
+  ;;
+esac
 
 exec "$REAL" "$@"

@@ -1,13 +1,13 @@
 #!/bin/sh
-# SUBSYNC_HAPP_JSON_HY2_IMPORT_V177
-# SUBSYNC_HAPP_JSON_HY2_STRIP_FRAGMENT_V178B
+# SUBSYNC_HAPP_JSON_HY2_IMPORT_V221
+# based on SUBSYNC_HAPP_JSON_HY2_IMPORT_V220 and V178B strip-fragment logic
 set -u
 
-BASE="/usr/bin/sub-sync.before-happ-json-hy2-v177"
+REAL="/usr/bin/sub-sync.real"
 DATA="/etc/sub-sync"
 LINKS="$DATA/links.txt"
 SERVERS="$DATA/servers.json"
-TMP="/tmp/subsync-happ-json-hy2-v178b.$$"
+TMP="/tmp/subsync-happ-json-hy2-v221.$$"
 
 mkdir -p "$TMP" "$DATA"
 touch "$LINKS"
@@ -21,9 +21,9 @@ json_ok() {
   jq empty "$1" >/dev/null 2>&1
 }
 
-echo "Happ JSON HY2 v178b: scan subscriptions"
+echo "Happ JSON HY2 v221: scan subscriptions"
 
-"$BASE" list-subs 2>/dev/null | jq -r '.[].url' 2>/dev/null | while IFS= read -r url; do
+"$REAL" list-subs 2>/dev/null | jq -r '.[].url // empty' 2>/dev/null | while IFS= read -r url; do
   [ -n "$url" ] || continue
 
   raw="$TMP/sub.raw"
@@ -67,6 +67,16 @@ echo "Happ JSON HY2 v178b: scan subscriptions"
       continue
     fi
 
+    if jq -e --arg addr "$addr" --arg port "$port" '
+      any(.[]?;
+        ((.proto // "") == "hysteria2")
+        and ((.addr // "") == $addr)
+        and (((.port // "") | tostring) == ($port | tostring))
+      )
+    ' "$SERVERS" >/dev/null 2>&1; then
+      continue
+    fi
+
     printf '\n%s\n' "$link" >> "$LINKS"
 
     idx=$((idx + 1))
@@ -80,7 +90,7 @@ echo "Happ JSON HY2 v178b: scan subscriptions"
       >> "$nd"
 
     added=$((added + 1))
-    printf 'Happ JSON HY2 v178b: added %s %s:%s\n' "$name" "$addr" "$port"
+    printf 'Happ JSON HY2 v221: added %s %s:%s\n' "$name" "$addr" "$port"
   done < "$cand"
 
   if [ "$added" -gt 0 ]; then
@@ -88,7 +98,7 @@ echo "Happ JSON HY2 v178b: scan subscriptions"
     jq -s '.[0] + .[1]' "$SERVERS" "$TMP/new.json" > "$TMP/servers.json"
     jq empty "$TMP/servers.json"
     cp -f "$TMP/servers.json" "$SERVERS"
-    logger -t sub-sync "Happ JSON HY2 v178b: added ${added} hysteria2 server(s)"
+    logger -t sub-sync "Happ JSON HY2 v221: added ${added} hysteria2 server(s)"
   fi
 done
 
