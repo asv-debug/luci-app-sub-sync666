@@ -1,9 +1,9 @@
 {
-  "version": "v268",
-  "build": 268,
-  "title": "Вышло обновление Podcop Sub v666 v268",
-  "message": "Исправлена установка после темы: JS больше не скачивается повторно, если уже установлен. Удаление темы получило локальный fallback. UI v266b, guard и меню сохранены.",
-  "required_marker": "SUBSYNC_INSTALL_VERSION_FILES_V268_BEGIN",
+  "version": "v270",
+  "build": 270,
+  "title": "Вышло обновление Podcop Sub v666 v270",
+  "message": "Guard ставится до темы, установка после темы больше не падает. Скрыта кнопка «Проверить» в блоке обновления. UI v266b и удаление темы сохранены.",
+  "required_marker": "SUBSYNC_INSTALL_VERSION_FILES_V270_BEGIN",
   "install_url": "https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main/install.sh",
-  "released_at": "2026-05-30 12:38:24 +0400"
+  "released_at": "2026-05-30 12:57:53 +0400"
 }
