@@ -1,9 +1,9 @@
 {
-  "version": "v270",
-  "build": 270,
-  "title": "Вышло обновление Podcop Sub v666 v270",
-  "message": "Guard ставится до темы, установка после темы больше не падает. Скрыта кнопка «Проверить» в блоке обновления. UI v266b и удаление темы сохранены.",
-  "required_marker": "SUBSYNC_INSTALL_VERSION_FILES_V270_BEGIN",
+  "version": "v271",
+  "build": 271,
+  "title": "Вышло обновление Podcop Sub v666 v271",
+  "message": "Исправлена чистая установка и удаление: uninstall полностью удаляет module JS/menu/ACL/guard/theme, install проверяет module JS/menu/ACL и ставит тему с retry. UI v266b/v269b сохранён.",
+  "required_marker": "SUBSYNC_INSTALL_VERSION_FILES_V271_BEGIN",
   "install_url": "https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main/install.sh",
-  "released_at": "2026-05-30 12:57:53 +0400"
+  "released_at": "2026-05-30 13:09:16 +0400"
 }

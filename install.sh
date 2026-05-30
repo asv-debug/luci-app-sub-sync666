@@ -1,5 +1,5 @@
 #!/bin/sh
-# SUBSYNC_PUBLIC_BUILD_V270
+# SUBSYNC_PUBLIC_BUILD_V271
 # SUBSYNC_SKIP_THEME_IF_PRESENT_V260_BEGIN
 if [ -d /www/luci-static/proton2025 ] && uci show luci 2>/dev/null | grep -q "ProtoByZKS95"; then
   export SUBSYNC_SKIP_PROTOBYZKS95_THEME=1
@@ -13,7 +13,7 @@ BRANCH="${SUBSYNC_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/${REPO_SLUG}/${BRANCH}"
 
 echo "========================================="
-echo "  Podcop Sub v666 — public install v270"
+echo "  Podcop Sub v666 — public install v271"
 echo "========================================="
 echo "Backup: disabled for public/friend install"
 
@@ -104,24 +104,59 @@ rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev
 /etc/init.d/podkop restart >/dev/null 2>&1 || true
 
 echo "========================================="
-echo "Podcop Sub v666 public install v270 complete"
+echo "Podcop Sub v666 public install v271 complete"
 echo "Open: Services -> Podkop"
 echo "Re-login LuCI after install"
 echo "========================================="
-# SUBSYNC_INSTALL_VERSION_FILES_V270_BEGIN
+# SUBSYNC_INSTALL_VERSION_FILES_V271_BEGIN
 echo "========================================="
-echo " Podcop Sub v666 OTA v270 guard-before-theme"
+echo " Podcop Sub v666 OTA v271 clean install"
 echo "========================================="
 
 SUBSYNC_RAW_BASE="${SUBSYNC_RAW_BASE:-${RAW_BASE:-https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main}}"
 THEME_RAW="https://raw.githubusercontent.com/kzolotarev95/luci-theme-protobyzks95/main/install.sh"
 DST="/www/luci-static/resources/view/sub_sync"
 SRC_JS="$DST/sub_sync.js"
+THEME_OK=0
 
-echo "[1/14] prepare folders"
+subsync_theme_install_v271() {
+  i=1
+  while [ "$i" -le 5 ]; do
+    echo "=== theme install try $i/5 ==="
+    if wget -O /tmp/protobyzks95-install.sh "$THEME_RAW?v=$(date +%s)-$i"; then
+      if sh -n /tmp/protobyzks95-install.sh; then
+        if sh /tmp/protobyzks95-install.sh; then
+          if [ -d /www/luci-static/proton2025 ]; then
+            uci set luci.main.mediaurlbase='/luci-static/proton2025' 2>/dev/null || true
+            uci commit luci 2>/dev/null || true
+            echo "OK: theme installed and active: $(uci get luci.main.mediaurlbase 2>/dev/null || true)"
+            return 0
+          fi
+        fi
+      else
+        echo "WARN: downloaded theme installer syntax failed"
+      fi
+    fi
+    echo "WARN: theme install try $i failed"
+    i=$((i + 1))
+    sleep 4
+  done
+
+  if [ -d /www/luci-static/proton2025 ]; then
+    uci set luci.main.mediaurlbase='/luci-static/proton2025' 2>/dev/null || true
+    uci commit luci 2>/dev/null || true
+    echo "OK: theme already exists and active: $(uci get luci.main.mediaurlbase 2>/dev/null || true)"
+    return 0
+  fi
+
+  echo "WARN_THEME_FAILED: module will remain installed, but proton2025 theme was not installed"
+  return 1
+}
+
+echo "[1/15] prepare folders"
 mkdir -p /etc/sub-sync /usr/bin /etc/init.d /usr/share/luci/menu.d /usr/share/rpcd/acl.d "$DST"
 
-echo "[2/14] install persistent guard helper before theme"
+echo "[2/15] install persistent guard helper before theme"
 if wget -qO /usr/bin/podcop-sub-v666-guard "$SUBSYNC_RAW_BASE/usr/bin/podcop-sub-v666-guard?v=$(date +%s)"; then
   chmod 755 /usr/bin/podcop-sub-v666-guard
 else
@@ -129,7 +164,7 @@ else
   exit 1
 fi
 
-echo "[3/14] install guard init service before theme"
+echo "[3/15] install guard init service before theme"
 if wget -qO /etc/init.d/podcop-sub-v666-guard "$SUBSYNC_RAW_BASE/etc/init.d/podcop-sub-v666-guard?v=$(date +%s)"; then
   chmod 755 /etc/init.d/podcop-sub-v666-guard
   /etc/init.d/podcop-sub-v666-guard enable >/dev/null 2>&1 || true
@@ -137,41 +172,33 @@ else
   echo "WARN: guard init download failed before theme"
 fi
 
-echo "[4/14] install cron guard"
+echo "[4/15] install cron guard"
 touch /etc/crontabs/root
 grep -q '/usr/bin/podcop-sub-v666-guard' /etc/crontabs/root 2>/dev/null || \
   echo '*/5 * * * * /usr/bin/podcop-sub-v666-guard >/tmp/podcop-sub-v666-guard.log 2>&1' >> /etc/crontabs/root
 /etc/init.d/cron restart >/dev/null 2>&1 || true
 
-echo "[5/14] install updater helper before theme"
+echo "[5/15] install updater helper before theme"
 wget -qO /usr/bin/sub-sync-module-update "$SUBSYNC_RAW_BASE/usr/bin/sub-sync-module-update?v=$(date +%s)" && chmod 755 /usr/bin/sub-sync-module-update || echo "WARN: updater download failed before theme"
 
-echo "[6/14] install ProtoByZKS95/proton2025 theme via install.sh"
-if wget -O /tmp/protobyzks95-install.sh "$THEME_RAW?v=$(date +%s)"; then
-  if sh -n /tmp/protobyzks95-install.sh; then
-    sh /tmp/protobyzks95-install.sh || echo "WARN: theme installer returned non-zero"
-  else
-    echo "WARN: theme installer syntax failed"
-  fi
+echo "[6/15] install ProtoByZKS95/proton2025 theme with retries"
+if subsync_theme_install_v271; then
+  THEME_OK=1
 else
-  echo "WARN: theme installer download failed"
+  THEME_OK=0
 fi
 
-if [ -d /www/luci-static/proton2025 ]; then
-  uci set luci.main.mediaurlbase='/luci-static/proton2025' 2>/dev/null || true
-  uci commit luci 2>/dev/null || true
-  echo "OK: theme active: $(uci get luci.main.mediaurlbase 2>/dev/null || true)"
-else
-  echo "WARN: /www/luci-static/proton2025 not found after theme install"
-fi
-
-echo "[7/14] use already-installed module JS"
-if [ ! -s "$SRC_JS" ] || ! grep -q 'SUBSYNC_DIRECT_REMOVE_MANUAL_HIDE_LOAD_V266B' "$SRC_JS" 2>/dev/null; then
-  echo "ERROR: local JS missing tested marker after initial install"
+echo "[7/15] verify module JS from base install"
+if [ ! -s "$SRC_JS" ]; then
+  echo "ERROR: module JS missing after base install: $SRC_JS"
   exit 1
 fi
 
-echo "[8/14] verify UI markers"
+echo "[8/15] verify ACL/menu exist"
+[ -s /usr/share/rpcd/acl.d/luci-app-sub-sync.json ] || { echo "ERROR: ACL missing"; exit 1; }
+[ -s /usr/share/luci/menu.d/luci-app-sub-sync.json ] || { echo "ERROR: menu missing"; exit 1; }
+
+echo "[9/15] verify UI markers"
 grep -q 'SUBSYNC_DIRECT_REMOVE_MANUAL_HIDE_LOAD_V266B' "$SRC_JS" || { echo "ERROR: v266b direct UI marker missing"; exit 1; }
 grep -q 'SUBSYNC_HIDE_UPDATE_CHECK_BUTTON_V269B' "$SRC_JS" || { echo "ERROR: update check hide marker missing"; exit 1; }
 grep -q 'SUBSYNC_UI_UPDATE_LIVE_TIMER_V263' "$SRC_JS" || { echo "ERROR: v263 timer marker missing"; exit 1; }
@@ -182,14 +209,14 @@ if grep -q 'Мануал: как пользоваться модулем' "$SRC_
 fi
 grep -q 'display:none!important;visibility:hidden!important;padding:2px 12px' "$SRC_JS" || { echo "ERROR: load button hidden style missing"; exit 1; }
 
-echo "[9/14] install JS aliases from local tested JS"
-for v in 208 211 212 221 238 252 253 254 255 256 258 259 260 261 262 263 264 265 266 267 268 269 270; do
+echo "[10/15] install JS aliases from local tested JS"
+for v in 208 211 212 221 238 252 253 254 255 256 258 259 260 261 262 263 264 265 266 267 268 269 270 271; do
   cp -f "$SRC_JS" "$DST/sub_sync_v${v}.js"
 done
 chmod 755 "$DST"
 chmod 644 "$DST"/*.js 2>/dev/null || true
 
-echo "[10/14] restore independent menu"
+echo "[11/15] force clean menu"
 cat > /usr/share/luci/menu.d/luci-app-sub-sync.json <<'MENU'
 {
   "admin/services/podkop/sub_sync": {
@@ -206,33 +233,39 @@ cat > /usr/share/luci/menu.d/luci-app-sub-sync.json <<'MENU'
 }
 MENU
 
-echo "[11/14] run guard now"
+echo "[12/15] run guard now"
 if [ -x /usr/bin/podcop-sub-v666-guard ]; then
   /usr/bin/podcop-sub-v666-guard || echo "WARN: guard returned non-zero"
 else
   echo "WARN: guard helper missing"
 fi
 
-echo "[12/14] write local version"
-echo "270" > /etc/sub-sync/module-build
-echo "v270" > /etc/sub-sync/module-version
+echo "[13/15] write local version"
+echo "271" > /etc/sub-sync/module-build
+echo "v271" > /etc/sub-sync/module-version
 
-echo "[13/14] clear LuCI cache"
+echo "[14/15] clear LuCI cache"
 rm -rf /tmp/luci-modulecache /tmp/luci-modulecache/* /tmp/luci-indexcache /tmp/luci-indexcache* /tmp/luci-sessions /tmp/luci-sessions/* 2>/dev/null || true
 find /tmp -maxdepth 1 -type d -name 'luci-*cache*' -exec rm -rf {} + 2>/dev/null || true
 find /tmp -maxdepth 1 -type f -name 'luci-*cache*' -delete 2>/dev/null || true
 sync
 
-echo "[14/14] verify theme/menu/guard + delayed LuCI restart"
+echo "[15/15] final install verification"
+ls -l "$SRC_JS" /usr/share/luci/menu.d/luci-app-sub-sync.json /usr/share/rpcd/acl.d/luci-app-sub-sync.json 2>/dev/null || true
 uci get luci.main.mediaurlbase 2>/dev/null || true
 grep -RsnE 'sub_sync|Подписки|Мониторинг' /usr/share/luci/menu.d/*.json 2>/dev/null || true
 grep -n 'podcop-sub-v666-guard' /etc/crontabs/root 2>/dev/null || true
 
-nohup sh -c 'sleep 3; /etc/init.d/rpcd restart >/dev/null 2>&1 || true; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true' >/tmp/subsync-v270-delayed-restart.log 2>&1 &
+nohup sh -c 'sleep 3; /etc/init.d/rpcd restart >/dev/null 2>&1 || true; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true' >/tmp/subsync-v271-delayed-restart.log 2>&1 &
 
 rm -f /tmp/protobyzks95-install.sh 2>/dev/null || true
-logger -t sub-sync "Podcop Sub v666 public build v270 installed guard-before-theme hide-check" 2>/dev/null || true
+logger -t sub-sync "Podcop Sub v666 public build v271 installed clean install/uninstall" 2>/dev/null || true
 
+echo "DONE_MODULE_OK: Podcop Sub v666 v271 module installed."
+if [ "$THEME_OK" = "1" ]; then
+  echo "DONE_THEME_OK: ProtoByZKS95/proton2025 theme installed/active."
+else
+  echo "WARN_THEME_FAILED: Module installed, but theme download/install failed. Re-run install later or install theme separately."
+fi
 echo "DONE: install.sh finished rc=0"
-echo "DONE: Podcop Sub v666 v270 installed. Guard before theme, update Check button hidden."
-# SUBSYNC_INSTALL_VERSION_FILES_V270_END
+# SUBSYNC_INSTALL_VERSION_FILES_V271_END
