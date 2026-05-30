@@ -1,5 +1,5 @@
 #!/bin/sh
-# SUBSYNC_PUBLIC_BUILD_V274
+# SUBSYNC_PUBLIC_BUILD_V275
 # SUBSYNC_SKIP_THEME_IF_PRESENT_V260_BEGIN
 if [ -d /www/luci-static/proton2025 ] && uci show luci 2>/dev/null | grep -q "ProtoByZKS95"; then
   export SUBSYNC_SKIP_PROTOBYZKS95_THEME=1
@@ -13,7 +13,7 @@ BRANCH="${SUBSYNC_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/${REPO_SLUG}/${BRANCH}"
 
 echo "========================================="
-echo "  Podcop Sub v666 — public install v274"
+echo "  Podcop Sub v666 — public install v275"
 echo "========================================="
 echo "Backup: disabled for public/friend install"
 
@@ -104,13 +104,13 @@ rm -rf /tmp/luci-modulecache/* /tmp/luci-indexcache* /tmp/luci-sessions/* 2>/dev
 /etc/init.d/podkop restart >/dev/null 2>&1 || true
 
 echo "========================================="
-echo "Podcop Sub v666 public install v274 complete"
+echo "Podcop Sub v666 public install v275 complete"
 echo "Open: Services -> Podkop"
 echo "Re-login LuCI after install"
 echo "========================================="
-# SUBSYNC_INSTALL_VERSION_FILES_V274_BEGIN
+# SUBSYNC_INSTALL_VERSION_FILES_V275_BEGIN
 echo "========================================="
-echo " Podcop Sub v666 OTA v274 ACL fallback clean install"
+echo " Podcop Sub v666 OTA v275 ACL fallback clean install"
 echo "========================================="
 
 SUBSYNC_RAW_BASE="${SUBSYNC_RAW_BASE:-${RAW_BASE:-https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main}}"
@@ -317,8 +317,8 @@ fi
 [ -x /usr/bin/podcop-sub-v666-xhttp-patch ] && /usr/bin/podcop-sub-v666-xhttp-patch >/tmp/podcop-sub-v666-xhttp-patch.log 2>&1 || true
 
 echo "[13/15] write local version"
-echo "274" > /etc/sub-sync/module-build
-echo "v274" > /etc/sub-sync/module-version
+echo "275" > /etc/sub-sync/module-build
+echo "v275" > /etc/sub-sync/module-version
 
 echo "[14/15] clear LuCI cache"
 rm -rf /tmp/luci-modulecache /tmp/luci-modulecache/* /tmp/luci-indexcache /tmp/luci-indexcache* /tmp/luci-sessions /tmp/luci-sessions/* 2>/dev/null || true
@@ -334,9 +334,9 @@ grep -n 'podcop-sub-v666-guard' /etc/crontabs/root 2>/dev/null || true
 grep -n -A6 -B2 'var moduleUpdateCheckBtnV236' "$DST/sub_sync_v221.js" 2>/dev/null | head -20
 
 rm -f /tmp/protobyzks95-install.sh 2>/dev/null || true
-logger -t sub-sync "Podcop Sub v666 public build v274 installed ACL fallback final" 2>/dev/null || true
+logger -t sub-sync "Podcop Sub v666 public build v275 installed ACL fallback final" 2>/dev/null || true
 
-echo "DONE_MODULE_OK: Podcop Sub v666 v274 module installed."
+echo "DONE_MODULE_OK: Podcop Sub v666 v275 module installed."
 if [ "$THEME_OK" = "1" ]; then
   echo "DONE_THEME_OK: ProtoByZKS95/proton2025 theme installed/active."
 else
@@ -346,4 +346,4 @@ echo "DONE: install.sh finished rc=0"
 
 /etc/init.d/rpcd restart >/dev/null 2>&1 || true
 /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
-# SUBSYNC_INSTALL_VERSION_FILES_V274_END
+# SUBSYNC_INSTALL_VERSION_FILES_V275_END

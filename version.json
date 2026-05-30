@@ -1,9 +1,9 @@
 {
-  "version": "v274",
-  "build": 274,
-  "title": "Вышло обновление Podcop Sub v666 v274",
-  "message": "Финальная установка/удаление: install имеет локальный ACL fallback, скрывает Проверить до проверок, не создаёт дубль меню, guard не возвращает дубль.",
-  "required_marker": "SUBSYNC_INSTALL_VERSION_FILES_V274_BEGIN",
+  "version": "v275",
+  "build": 275,
+  "title": "Вышло обновление Podcop Sub v666 v275",
+  "message": "Полная чистка удаления: uninstall удаляет модуль, тему, ACL, cron, guard, helpers, /etc/sub-sync, tmp и public theme backups. Install сохраняет ACL fallback и скрытие Проверить.",
+  "required_marker": "SUBSYNC_INSTALL_VERSION_FILES_V275_BEGIN",
   "install_url": "https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main/install.sh",
-  "released_at": "2026-05-30 13:50:13 +0400"
+  "released_at": "2026-05-30 13:59:07 +0400"
 }
