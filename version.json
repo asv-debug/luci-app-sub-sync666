@@ -1,9 +1,9 @@
 {
-  "version": "v267",
-  "build": 267,
-  "title": "Вышло обновление Podcop Sub v666 v267",
-  "message": "Удаление модуля теперь также запускает удаление темы ProtoByZKS95/proton2025. UI v266b, guard, меню и установка темы сохранены.",
-  "required_marker": "SUBSYNC_INSTALL_VERSION_FILES_V267_BEGIN",
+  "version": "v268",
+  "build": 268,
+  "title": "Вышло обновление Podcop Sub v666 v268",
+  "message": "Исправлена установка после темы: JS больше не скачивается повторно, если уже установлен. Удаление темы получило локальный fallback. UI v266b, guard и меню сохранены.",
+  "required_marker": "SUBSYNC_INSTALL_VERSION_FILES_V268_BEGIN",
   "install_url": "https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main/install.sh",
-  "released_at": "2026-05-30 12:31:43 +0400"
+  "released_at": "2026-05-30 12:38:24 +0400"
 }
