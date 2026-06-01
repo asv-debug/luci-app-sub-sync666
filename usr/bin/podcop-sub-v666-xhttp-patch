@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+# SUBSYNC_PODCOP_XHTTP_PATCH_V391
 
 MODE="${1:-apply}"
 
@@ -15,6 +16,16 @@ apply_patch() {
 
     cp -n "$F" "$BF" 2>/dev/null || true
     cp -n "$M" "$BM" 2>/dev/null || true
+
+    # SUBSYNC_XHTTP_REAPPLY_FROM_BACKUP_V391
+    # If an older Podcop Sub xHTTP patch is already injected, restore original Podkop files first,
+    # then apply this version cleanly. This avoids keeping stale xHTTP generator code.
+    if grep -q "xhttp|http)" "$F" 2>/dev/null && [ -f "$BF" ]; then
+        cp -f "$BF" "$F"
+    fi
+    if grep -q "^sing_box_cm_set_xhttp_transport()" "$M" 2>/dev/null && [ -f "$BM" ]; then
+        cp -f "$BM" "$M"
+    fi
 
     echo "[Podcop Sub v666] patch Podkop xHTTP facade"
 
@@ -45,7 +56,7 @@ apply_patch() {
         in_func && /alpn=\$\(comma_string_to_json_array/ {
             print
             print "        local transport_type=$(url_get_query_param \"$url\" type)"
-            print "        if [ \"$alpn\" = \"[]\" ] && [ \"$transport_type\" = \"xhttp\" ]; then"
+            print "        if [ \"$alpn\" = \"[]\" ] && [ \"$transport_type\" = \"xhttp\" ] && [ \"${SUBSYNC_XHTTP_FORCE_ALPN:-0}\" = \"1\" ]; then"
             print "            alpn='\''[\"h2\",\"http/1.1\"]'\''"
             print "        fi"
             next
@@ -73,7 +84,7 @@ sing_box_cm_set_xhttp_transport() {
     [ -z "$path" ] && path="/"
     [ -z "$host" ] && host="$sni"
     [ -z "$mode" ] && mode="auto"
-    [ -z "$x_padding_bytes" ] && x_padding_bytes="100-1000"
+    [ -z "$x_padding_bytes" ] && x_padding_bytes="0-0"
 
     local no_grpc_header=""
     local sc_max_each_post_bytes=""

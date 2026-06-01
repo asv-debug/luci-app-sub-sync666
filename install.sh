@@ -78,14 +78,14 @@ fi
 EOSAFE
 chmod +x /usr/bin/podcop-sub-v666-safe-podkop-restart
 # SUBSYNC_SAFE_PODKOP_RESTART_INSTALL_V390_END
-# SUBSYNC_PUBLIC_BUILD_V390
-# SUBSYNC_PUBLIC_BUILD_V390
-# SUBSYNC_PUBLIC_BUILD_V390
-# SUBSYNC_PUBLIC_BUILD_V390
-# SUBSYNC_PUBLIC_BUILD_V390
-# SUBSYNC_PUBLIC_BUILD_V390
-# SUBSYNC_PUBLIC_BUILD_V390
-# SUBSYNC_INSTALL_VERSION_FILES_V390_BEGIN
+# SUBSYNC_PUBLIC_BUILD_V391
+# SUBSYNC_PUBLIC_BUILD_V391
+# SUBSYNC_PUBLIC_BUILD_V391
+# SUBSYNC_PUBLIC_BUILD_V391
+# SUBSYNC_PUBLIC_BUILD_V391
+# SUBSYNC_PUBLIC_BUILD_V391
+# SUBSYNC_PUBLIC_BUILD_V391
+# SUBSYNC_INSTALL_VERSION_FILES_V391_BEGIN
 set -u
 
 REPO_OWNER="${REPO_OWNER:-kzolotarev95}"
@@ -296,8 +296,8 @@ rm -f /tmp/root.cron.v390
 /etc/init.d/cron restart 2>/dev/null || true
 
 echo "=== version ==="
-echo "v390" > /etc/sub-sync/module-version
-echo "390" > /etc/sub-sync/module-build
+echo "v391" > /etc/sub-sync/module-version
+echo "391" > /etc/sub-sync/module-build
 
 echo "=== apply Podkop xHTTP patch ==="
 if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
