@@ -1,6 +1,6 @@
 {
-  "version": "v359",
-  "build": 359,
-  "required_marker": "SUBSYNC_PUBLIC_BUILD_V359",
-  "notes": "Fix LuCI 403 after module update by forcing JS/static permissions"
+  "version": "v360",
+  "build": 360,
+  "required_marker": "SUBSYNC_PUBLIC_BUILD_V360",
+  "notes": "Guard restores Podcop Sub v666 tabs after Podkop update"
 }

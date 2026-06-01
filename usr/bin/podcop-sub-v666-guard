@@ -1,23 +1,66 @@
 #!/bin/sh
-# PODCOP_SUB_V666_PERSISTENT_GUARD_V275
-LOGTAG="podcop-sub-v666-guard"
-changed=0
+# SUBSYNC_PERSISTENT_GUARD_V264
+# SUBSYNC_GUARD_RESTORE_TABS_V360
+set -u
 
-if [ -f /usr/share/luci/menu.d/luci-app-sub-sync.json ]; then
-  rm -f /usr/share/luci/menu.d/luci-app-sub-sync.json 2>/dev/null || true
-  rm -rf /tmp/luci-modulecache /tmp/luci-modulecache/* /tmp/luci-indexcache /tmp/luci-indexcache* 2>/dev/null || true
-  logger -t "$LOGTAG" "removed duplicate standalone Подписки / Мониторинг menu"
-  changed=1
-fi
+MENU="/usr/share/luci/menu.d/luci-app-podkop.json"
+JS="/www/luci-static/resources/view/sub_sync/sub_sync_v221.js"
+PATCH="/usr/bin/podcop-sub-v666-xhttp-patch"
 
-if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
+changed_menu=0
+
+log() {
+  logger -t podcop-sub-v666-guard "$*" 2>/dev/null || true
+}
+
+echo "[guard] Podcop Sub v666 guard v360"
+
+echo "[guard] check xHTTP patch"
+if [ -x "$PATCH" ]; then
   if ! grep -q 'xhttp|http)' /usr/lib/podkop/sing_box_config_facade.sh 2>/dev/null || \
      ! grep -q 'sing_box_cm_set_xhttp_transport' /usr/lib/podkop/sing_box_config_manager.sh 2>/dev/null; then
-    logger -t "$LOGTAG" "xHTTP patch missing, repairing"
-    /usr/bin/podcop-sub-v666-xhttp-patch >/tmp/podcop-sub-v666-xhttp-patch.log 2>&1 || logger -t "$LOGTAG" "xHTTP repair failed"
-    changed=1
+    echo "[guard] xHTTP patch missing, restore"
+    log "xHTTP patch missing, restore"
+    "$PATCH" >/tmp/podcop-sub-v666-guard-xhttp.log 2>&1 || true
+  else
+    echo "[guard] xHTTP patch OK"
   fi
 fi
 
-[ "$changed" = "0" ] && logger -t "$LOGTAG" "OK"
+echo "[guard] check LuCI tabs/menu"
+if [ -f "$JS" ] && [ -f "$MENU" ]; then
+  if ! grep -q 'sub_sync/sub_sync_v221' "$MENU" 2>/dev/null; then
+    echo "[guard] menu path missing, restore tabs"
+    log "Podkop menu overwritten, restore Podcop Sub v666 tabs"
+
+    cp -a "$MENU" "$MENU.before-podcop-sub-v666-v360-$(date +%s)" 2>/dev/null || true
+
+    awk '
+      {
+        if (!done && $0 ~ /"path"[[:space:]]*:/) {
+          sub(/"path"[[:space:]]*:[[:space:]]*"[^"]*"/, "\"path\": \"sub_sync/sub_sync_v221\"")
+          done=1
+        }
+        print
+      }
+    ' "$MENU" > /tmp/luci-app-podkop.json.v360 && mv /tmp/luci-app-podkop.json.v360 "$MENU"
+
+    chmod 644 "$MENU" 2>/dev/null || true
+    chown root:root "$MENU" 2>/dev/null || true
+    changed_menu=1
+  else
+    echo "[guard] menu path OK"
+  fi
+else
+  echo "[guard] skip menu restore: JS or menu not found"
+fi
+
+if [ "$changed_menu" = "1" ]; then
+  echo "[guard] clear LuCI cache/restart"
+  rm -rf /tmp/luci-* /tmp/luci-indexcache* /tmp/.uci /tmp/ucitrack* 2>/dev/null || true
+  /etc/init.d/rpcd restart 2>/dev/null || true
+  /etc/init.d/uhttpd restart 2>/dev/null || true
+fi
+
+echo "[guard] done"
 exit 0
