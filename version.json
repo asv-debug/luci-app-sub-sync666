@@ -1,6 +1,6 @@
 {
-  "version": "v357",
-  "build": 357,
-  "required_marker": "SUBSYNC_REAL_TXT_FILE_DELETE_V355",
-  "notes": "TXT file import/delete v355 from AX stable, text fix, helper install"
+  "version": "v358",
+  "build": 358,
+  "required_marker": "SUBSYNC_PUBLIC_BUILD_V358",
+  "notes": "Fix updater safe marker for TXT helper build"
 }

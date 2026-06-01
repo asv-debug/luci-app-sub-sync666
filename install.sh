@@ -1,4 +1,5 @@
 #!/bin/sh
+# SUBSYNC_PUBLIC_BUILD_V358
 # SUBSYNC_PUBLIC_BUILD_V357
 # SUBSYNC_PUBLIC_BUILD_V340
 # SUBSYNC_PUBLIC_BUILD_V340
@@ -11,10 +12,10 @@ REPO_REF="${REPO_REF:-main}"
 RAW_BASE="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_REF}"
 
 echo "========================================="
-echo "  Podcop Sub v666 — public install v277"
+echo "  Podcop Sub v666 — public install v358"
 echo "========================================="
 echo "Backup: disabled for public/friend install"
-echo "Downloader: wget strict direct installer v277"
+echo "Downloader: wget strict direct installer v358"
 
 dl() {
   rel="$1"
@@ -198,15 +199,15 @@ MENU
 
 echo "=== cron guard ==="
 touch /etc/crontabs/root
-grep -v '/usr/bin/podcop-sub-v666-guard' /etc/crontabs/root > /tmp/root.cron.v276 2>/dev/null || true
-echo '*/5 * * * * /usr/bin/podcop-sub-v666-guard >/tmp/podcop-sub-v666-guard.log 2>&1' >> /tmp/root.cron.v276
-cat /tmp/root.cron.v276 > /etc/crontabs/root
-rm -f /tmp/root.cron.v276
+grep -v '/usr/bin/podcop-sub-v666-guard' /etc/crontabs/root > /tmp/root.cron.v358 2>/dev/null || true
+echo '*/5 * * * * /usr/bin/podcop-sub-v666-guard >/tmp/podcop-sub-v666-guard.log 2>&1' >> /tmp/root.cron.v358
+cat /tmp/root.cron.v358 > /etc/crontabs/root
+rm -f /tmp/root.cron.v358
 /etc/init.d/cron restart 2>/dev/null || true
 
 echo "=== version ==="
-echo "v357" > /etc/sub-sync/module-version
-echo "357" > /etc/sub-sync/module-build
+echo "v358" > /etc/sub-sync/module-version
+echo "358" > /etc/sub-sync/module-build
 
 echo "=== apply Podkop xHTTP patch ==="
 if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
@@ -258,20 +259,21 @@ rm -rf /tmp/luci-modulecache /tmp/luci-modulecache/* /tmp/luci-indexcache /tmp/l
 /etc/init.d/rpcd restart 2>/dev/null || true
 /etc/init.d/uhttpd restart 2>/dev/null || true
 
-echo "DONE_MODULE_OK: Podcop Sub v666 v277 module installed."
+echo "DONE_MODULE_OK: Podcop Sub v666 v358 module installed."
 echo "DONE_THEME_STATUS: mediaurlbase=$(uci get luci.main.mediaurlbase 2>/dev/null || true)"
-echo "DONE: install.sh v276 finished rc=0"
+echo "DONE: install.sh v358 finished rc=0"
 # SUBSYNC_INSTALL_VERSION_FILES_V277_END
 
 # SUBSYNC_INSTALL_DELETE_PURGE_HELPER_V332_BEGIN
 echo "=== install delete purge helper v331/v332 ==="
+
+# SUBSYNC_INSTALL_TXT_HELPERS_V358_BEGIN
+RAW_BASE="${RAW_BASE:-https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main}"
+wget -O /usr/bin/sub-sync-txt-v348 "$RAW_BASE/usr/bin/sub-sync-txt-v348?v=$(date +%s)" || true
+wget -O /usr/bin/sub-sync-txt-delete-v355 "$RAW_BASE/usr/bin/sub-sync-txt-delete-v355?v=$(date +%s)" || true
+chmod +x /usr/bin/sub-sync-txt-v348 /usr/bin/sub-sync-txt-delete-v355 2>/dev/null || true
+# SUBSYNC_INSTALL_TXT_HELPERS_V358_END
 SUBSYNC_RAW_BASE="https://raw.githubusercontent.com/${REPO_OWNER:-kzolotarev95}/${REPO_NAME:-luci-app-sub-sync666}/${REPO_REF:-main}"
 wget -O /usr/bin/sub-sync-delete-purge-active-v331 "$SUBSYNC_RAW_BASE/usr/bin/sub-sync-delete-purge-active-v331?v=$(date +%s)" && chmod +x /usr/bin/sub-sync-delete-purge-active-v331 || echo "WARN: delete purge helper download failed"
 
-# SUBSYNC_INSTALL_TXT_HELPERS_V357_BEGIN
-mkdir -p /usr/bin
-fetch_file usr/bin/sub-sync-txt-v348 /usr/bin/sub-sync-txt-v348 || wget -O /usr/bin/sub-sync-txt-v348 "$RAW_BASE/usr/bin/sub-sync-txt-v348" || true
-fetch_file usr/bin/sub-sync-txt-delete-v355 /usr/bin/sub-sync-txt-delete-v355 || wget -O /usr/bin/sub-sync-txt-delete-v355 "$RAW_BASE/usr/bin/sub-sync-txt-delete-v355" || true
-chmod +x /usr/bin/sub-sync-txt-v348 /usr/bin/sub-sync-txt-delete-v355 2>/dev/null || true
-# SUBSYNC_INSTALL_TXT_HELPERS_V357_END
 # SUBSYNC_INSTALL_DELETE_PURGE_HELPER_V332_END
