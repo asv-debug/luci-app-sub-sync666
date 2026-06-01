@@ -1,0 +1,44 @@
+#!/bin/sh
+# PODCOP_SUB_V666_SAFE_PODKOP_RESTART_V389
+
+CMD="${1:-restart}"
+ORIG="/etc/init.d/podkop"
+
+has_outbound() {
+  for S in $(uci show podkop 2>/dev/null | sed -n 's/^podkop\.\([^.=]*\)=section.*/\1/p'); do
+    for O in proxy_string selector_proxy_links urltest_proxy_links outbound_json interface; do
+      V="$(uci -q get podkop.$S.$O 2>/dev/null || true)"
+      [ -n "$V" ] && return 0
+    done
+  done
+  return 1
+}
+
+apply_xhttp_patch() {
+  [ -x /usr/bin/podcop-sub-v666-xhttp-patch ] && /usr/bin/podcop-sub-v666-xhttp-patch apply >/dev/null 2>&1 || true
+}
+
+case "$CMD" in
+  start|restart|reload)
+    apply_xhttp_patch
+
+    if ! has_outbound; then
+      logger -t podcop-sub-v666 "v389: skip podkop $CMD, no outbound configured yet"
+      echo "podcop-sub-v666 v389: skip podkop $CMD, no outbound configured yet"
+
+      # Чисто остановить старый Podkop, но НЕ запускать без outbound.
+      "$ORIG" stop >/dev/null 2>&1 || true
+      exit 0
+    fi
+
+    exec "$ORIG" "$CMD"
+  ;;
+
+  stop)
+    exec "$ORIG" stop
+  ;;
+
+  *)
+    exec "$ORIG" "$@"
+  ;;
+esac
