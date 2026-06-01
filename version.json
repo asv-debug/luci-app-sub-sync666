@@ -1,6 +1,6 @@
 {
-  "version": "v358",
-  "build": 358,
-  "required_marker": "SUBSYNC_PUBLIC_BUILD_V358",
-  "notes": "Fix updater safe marker for TXT helper build"
+  "version": "v359",
+  "build": 359,
+  "required_marker": "SUBSYNC_PUBLIC_BUILD_V359",
+  "notes": "Fix LuCI 403 after module update by forcing JS/static permissions"
 }

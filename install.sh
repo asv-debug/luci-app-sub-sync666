@@ -1,4 +1,5 @@
 #!/bin/sh
+# SUBSYNC_PUBLIC_BUILD_V359
 # SUBSYNC_PUBLIC_BUILD_V358
 # SUBSYNC_PUBLIC_BUILD_V357
 # SUBSYNC_PUBLIC_BUILD_V340
@@ -12,10 +13,10 @@ REPO_REF="${REPO_REF:-main}"
 RAW_BASE="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_REF}"
 
 echo "========================================="
-echo "  Podcop Sub v666 — public install v358"
+echo "  Podcop Sub v666 — public install v359"
 echo "========================================="
 echo "Backup: disabled for public/friend install"
-echo "Downloader: wget strict direct installer v358"
+echo "Downloader: wget strict direct installer v359"
 
 dl() {
   rel="$1"
@@ -115,6 +116,14 @@ patch_js_hide_check /www/luci-static/resources/view/sub_sync/sub_sync.js
 patch_js_hide_check /www/luci-static/resources/view/sub_sync/sub_sync_v221.js
 
 echo "=== install ACL ==="
+
+# SUBSYNC_FIX_JS_403_PERMS_V359_BEGIN
+echo "=== fix LuCI static JS permissions v359 ==="
+chown -R root:root /www/luci-static/resources/view/sub_sync 2>/dev/null || true
+chmod 755 /www /www/luci-static /www/luci-static/resources /www/luci-static/resources/view /www/luci-static/resources/view/sub_sync 2>/dev/null || true
+chmod 644 /www/luci-static/resources/view/sub_sync/*.js 2>/dev/null || true
+# SUBSYNC_FIX_JS_403_PERMS_V359_END
+
 if dl "usr/share/rpcd/acl.d/luci-app-sub-sync.json" "/usr/share/rpcd/acl.d/luci-app-sub-sync.json"; then
   if grep -q 'luci-app-sub-sync' /usr/share/rpcd/acl.d/luci-app-sub-sync.json; then
     echo "OK: ACL downloaded"
@@ -199,15 +208,15 @@ MENU
 
 echo "=== cron guard ==="
 touch /etc/crontabs/root
-grep -v '/usr/bin/podcop-sub-v666-guard' /etc/crontabs/root > /tmp/root.cron.v358 2>/dev/null || true
-echo '*/5 * * * * /usr/bin/podcop-sub-v666-guard >/tmp/podcop-sub-v666-guard.log 2>&1' >> /tmp/root.cron.v358
-cat /tmp/root.cron.v358 > /etc/crontabs/root
-rm -f /tmp/root.cron.v358
+grep -v '/usr/bin/podcop-sub-v666-guard' /etc/crontabs/root > /tmp/root.cron.v359 2>/dev/null || true
+echo '*/5 * * * * /usr/bin/podcop-sub-v666-guard >/tmp/podcop-sub-v666-guard.log 2>&1' >> /tmp/root.cron.v359
+cat /tmp/root.cron.v359 > /etc/crontabs/root
+rm -f /tmp/root.cron.v359
 /etc/init.d/cron restart 2>/dev/null || true
 
 echo "=== version ==="
-echo "v358" > /etc/sub-sync/module-version
-echo "358" > /etc/sub-sync/module-build
+echo "v359" > /etc/sub-sync/module-version
+echo "359" > /etc/sub-sync/module-build
 
 echo "=== apply Podkop xHTTP patch ==="
 if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
@@ -254,14 +263,19 @@ uci get luci.main.mediaurlbase 2>/dev/null || true
 echo "--- hidden Проверить ---"
 grep -Rsn 'SUBSYNC_HIDE_UPDATE_CHECK_BUTTON_V269B' /www/luci-static/resources/view/sub_sync/sub_sync*.js 2>/dev/null | head
 
+# SUBSYNC_FINAL_JS_403_PERMS_V359
+chown -R root:root /www/luci-static/resources/view/sub_sync 2>/dev/null || true
+chmod 755 /www /www/luci-static /www/luci-static/resources /www/luci-static/resources/view /www/luci-static/resources/view/sub_sync 2>/dev/null || true
+chmod 644 /www/luci-static/resources/view/sub_sync/*.js 2>/dev/null || true
+
 echo "=== clear LuCI cache/restart ==="
 rm -rf /tmp/luci-modulecache /tmp/luci-modulecache/* /tmp/luci-indexcache /tmp/luci-indexcache* /tmp/luci-sessions /tmp/luci-sessions/* 2>/dev/null || true
 /etc/init.d/rpcd restart 2>/dev/null || true
 /etc/init.d/uhttpd restart 2>/dev/null || true
 
-echo "DONE_MODULE_OK: Podcop Sub v666 v358 module installed."
+echo "DONE_MODULE_OK: Podcop Sub v666 v359 module installed."
 echo "DONE_THEME_STATUS: mediaurlbase=$(uci get luci.main.mediaurlbase 2>/dev/null || true)"
-echo "DONE: install.sh v358 finished rc=0"
+echo "DONE: install.sh v359 finished rc=0"
 # SUBSYNC_INSTALL_VERSION_FILES_V277_END
 
 # SUBSYNC_INSTALL_DELETE_PURGE_HELPER_V332_BEGIN
