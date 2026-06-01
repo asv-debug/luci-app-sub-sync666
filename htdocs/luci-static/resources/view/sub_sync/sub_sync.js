@@ -1891,6 +1891,113 @@ syncAllBtnStates(sec3);
                             ])
                     ]);
 
+                    /* SUBSYNC_UPDATE_CARD_RENDER_V338_BEGIN */
+                    var updateLogV338 = E('pre', { 'style': 'display:none;margin-top:8px;max-height:220px;overflow:auto;white-space:pre-wrap;font-size:12px;line-height:1.35;padding:9px;border-radius:11px;background:rgba(0,0,0,.24);border:1px solid rgba(255,216,107,.24);' }, '' );
+                    var updateStatusV338 = E('span', { 'class': 'ss-donate-banner-v257__bank' }, 'Статус: не проверялось');
+                    var updateBtnV338 = E('button', { 'class': 'cbi-button cbi-button-positive', 'style': 'display:none', 'type': 'button' }, 'Обновить модуль');
+                    var updateToggleV338 = E('button', { 'class': 'cbi-button', 'style': 'display:none', 'type': 'button' }, 'Скрыть лог');
+                    function updateHasNewV338(out) {
+                            out = String(out || '' );
+                            if (/STATUS\s*=\s*UP_TO_DATE/i.test(out)) return false;
+                            var lb = parseInt((out.match(/^\s*LOCAL_BUILD\s*=\s*(\d+)/im) || [0,0])[1], 10) || 0;
+                            var rb = parseInt((out.match(/^\s*REMOTE_BUILD\s*=\s*(\d+)/im) || [0,0])[1], 10) || 0;
+                            return (lb && rb && rb > lb) || /STATUS\s*=\s*(UPDATE_AVAILABLE|NEED_UPDATE|OUTDATED|AVAILABLE|NEW_VERSION)/i.test(out);
+                    }
+                    function updateSetLogV338(txt, show) {
+                            updateLogV338.textContent = txt || '';
+                            updateLogV338.style.display = show ? 'block' : 'none';
+                            updateToggleV338.style.display = show ? 'inline-block' : 'none';
+                    }
+                    function updateRunV338(args, ok, bad) {
+                            Promise.resolve(L.require('fs')).then(function(fs) {
+                                    return fs.exec('/usr/bin/sub-sync-module-update', args);
+                            }).then(function(r) {
+                                    ok(((r && r.stdout) || '' ) + (((r && r.stderr) || '' ) ? '\n' + r.stderr : ''));
+                            }).catch(function(e) {
+                                    bad(e && e.message ? e.message : String(e));
+                            });
+                    }
+                    var moduleUpdateCardV338 = E('div', { 'class': 'ss-donate-banner-v257 ss-card ss-module-update-card-v338' }, [
+                            E('div', { 'class': 'ss-donate-banner-v257__glow' }, []),
+                            E('div', { 'class': 'ss-donate-banner-v257__top' }, 'Обновление Модуля'),
+                            E('div', { 'class': 'ss-donate-banner-v257__sub' }, 'Лог откроется только если найдено обновление.'),
+                            E('div', { 'class': 'ss-donate-banner-v257__pay' }, [
+                                    E('button', { 'class': 'cbi-button', 'type': 'button', 'click': function() {
+                                            var btn = this;
+                                            btn.disabled = true;
+                                            updateBtnV338.style.display = 'none';
+                                            updateSetLogV338('', false);
+                                            updateStatusV338.textContent = 'Статус: проверяю...';
+                                            updateRunV338(['check'], function(out) {
+                                                    btn.disabled = false;
+                                                    if (updateHasNewV338(out)) {
+                                                            updateStatusV338.textContent = 'Статус: найдено обновление';
+                                                            updateBtnV338.style.display = 'inline-block';
+                                                            updateSetLogV338(out, true);
+                                                    } else {
+                                                            updateStatusV338.textContent = 'Статус: обновлений нет';
+                                                            updateSetLogV338('', false);
+                                                    }
+                                            }, function(err) {
+                                                    btn.disabled = false;
+                                                    updateStatusV338.textContent = 'Статус: ошибка проверки';
+                                                    updateSetLogV338(String(err), true);
+                                            });
+                                    } }, 'Проверить обновление'),
+                                    updateBtnV338,
+                                    updateToggleV338,
+                                    updateStatusV338
+                            ]),
+                            updateLogV338
+                    ]);
+                    updateToggleV338.addEventListener('click', function() {
+                            if (updateLogV338.style.display === 'none') { updateLogV338.style.display = 'block'; updateToggleV338.textContent = 'Скрыть лог'; }
+                            else { updateLogV338.style.display = 'none'; updateToggleV338.textContent = 'Показать лог'; }
+                    });
+                    updateBtnV338.addEventListener('click', function() {
+                            var btn = this;
+                            btn.disabled = true;
+                            updateStatusV338.textContent = 'Статус: обновляю...';
+                            updateSetLogV338('Запускаю обновление...\n', true);
+                            updateRunV338(['update'], function(out) {
+                                    btn.disabled = false;
+                                    updateStatusV338.textContent = 'Статус: обновление завершено, обнови страницу';
+                                    updateSetLogV338(out || 'Обновление завершено', true);
+                            }, function(err) {
+                                    btn.disabled = false;
+                                    updateStatusV338.textContent = 'Статус: ошибка обновления';
+                                    updateSetLogV338(String(err), true);
+                            });
+                    });
+                    /* SUBSYNC_UPDATE_CARD_AUTOCHECK_V339_BEGIN */
+                    setTimeout(function() {
+                            try {
+                                    updateBtnV338.style.display = 'none';
+                                    updateSetLogV338('', false);
+                                    updateStatusV338.textContent = 'Статус: автопроверка...';
+                                    updateRunV338(['check'], function(out) {
+                                            if (updateHasNewV338(out)) {
+                                                    updateStatusV338.textContent = 'Статус: найдено обновление';
+                                                    updateBtnV338.style.display = 'inline-block';
+                                                    updateSetLogV338(out, true);
+                                            } else {
+                                                    updateStatusV338.textContent = 'Статус: версия актуальная';
+                                                    updateBtnV338.style.display = 'none';
+                                                    updateSetLogV338('', false);
+                                            }
+                                    }, function(err) {
+                                            updateStatusV338.textContent = 'Статус: ошибка автопроверки';
+                                            updateBtnV338.style.display = 'none';
+                                            updateSetLogV338(String(err), true);
+                                    });
+                            } catch(e) {
+                                    updateStatusV338.textContent = 'Статус: ошибка автопроверки';
+                                    updateSetLogV338(String(e && e.message ? e.message : e), true);
+                            }
+                    }, 900);
+                    /* SUBSYNC_UPDATE_CARD_AUTOCHECK_V339_END */
+                    /* SUBSYNC_UPDATE_CARD_RENDER_V338_END */
+
                     var moduleUpdateCardV236 = E('div', {
                             'class': 'ss-card ss-module-update-card-v236'
                     }, [
@@ -5418,7 +5525,7 @@ if (typeof window !== "undefined") window.setTimeout(function() { try { ssHydrat
   }
 }
                            `),
-				donateBannerV257, manualCardV53B, widgetsRow, sysWidgetsRowV96, wServerCard, sectionCreateCardV45B, subsCard, xhttpCard, autoPickCard, serversCard, 
+				donateBannerV257, moduleUpdateCardV338, manualCardV53B, widgetsRow, sysWidgetsRowV96, wServerCard, sectionCreateCardV45B, subsCard, xhttpCard, autoPickCard, serversCard, 
 				E('div', { 'style': 'text-align:right;margin-top:8px' }, [
                                         E('span', { 'class': 'ss-version ss-version-hidden-v90', 'style': 'display:none!important' }, '')
 				])
