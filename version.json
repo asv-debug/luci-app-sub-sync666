@@ -1,9 +1,6 @@
 {
-  "version": "v340",
-  "build": 340,
-  "title": "Podcop Sub v666 v340",
-  "message": "Fix retry installer verification for v339 update card autocheck build",
-  "required_marker": "SUBSYNC_PUBLIC_BUILD_V340",
-  "install_url": "https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main/install.sh",
-  "released_at": "2026-06-01"
+  "version": "v357",
+  "build": 357,
+  "required_marker": "SUBSYNC_REAL_TXT_FILE_DELETE_V355",
+  "notes": "TXT file import/delete v355 from AX stable, text fix, helper install"
 }

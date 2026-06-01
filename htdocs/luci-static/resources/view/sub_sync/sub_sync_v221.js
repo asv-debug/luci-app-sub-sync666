@@ -12,6 +12,1101 @@
 'require view.podkop.section as section';
 'require view.podkop.dashboard as dashboard';
 'require view.podkop.diagnostic as diagnostic';
+/* SUBSYNC_TXT_BLOCK_V348_FILES_USED_BEGIN */
+(function() {
+  if (window.__SUBSYNC_TXT_BLOCK_V348_FILES_USED) return;
+  window.__SUBSYNC_TXT_BLOCK_V348_FILES_USED = true;
+
+  var showAll = false;
+  var items = [];
+
+  function run(args) {
+    return Promise.resolve(L.require('fs')).then(function(fs) {
+      return fs.exec('/usr/bin/sub-sync', ['txt-v348'].concat(args));
+    });
+  }
+
+  function countLinks(s) {
+    var n = 0;
+    String(s || '').split(/\r?\n/).forEach(function(line) {
+      if (/^\s*(vless|ss|trojan|hy2|hysteria2):\/\//i.test(line)) n++;
+    });
+    return n;
+  }
+
+  function pingNum(v) {
+    v = String(v || '');
+    if (/timeout|no work|err/i.test(v)) return 999999;
+    var m = v.match(/([0-9.]+)/);
+    return m ? parseFloat(m[1]) : 999998;
+  }
+
+  function hideOld() {
+    ['ss-txt-block-v343','ss-txt-block-v344','ss-txt-block-v345','ss-txt-block-v346'].forEach(function(id) {
+      var x = document.getElementById(id);
+      if (x) x.style.display = 'none';
+    });
+  }
+
+  function findPlace() {
+    var controls = document.querySelectorAll('.ss-controls');
+    for (var i = 0; i < controls.length; i++) {
+      var t = String(controls[i].textContent || '');
+      if (/Добавить\s+список/i.test(t) && /Добавить\s*\+\s*загрузить\s+серверы/i.test(t))
+        return (controls[i].closest && controls[i].closest('.ss-card')) || controls[i].parentNode;
+    }
+    return null;
+  }
+
+  function make() {
+    hideOld();
+    if (document.getElementById('ss-txt-block-v348')) return;
+
+    var place = findPlace();
+    if (!place || !place.parentNode) return;
+
+    var card = document.createElement('div');
+    card.id = 'ss-txt-block-v348';
+    card.className = 'ss-card';
+    card.style.cssText = 'margin-top:12px;max-width:100%;overflow:hidden;box-sizing:border-box;border:1px solid rgba(76,175,80,.35);border-radius:14px;padding:12px';
+
+    var title = document.createElement('div');
+    title.style.cssText = 'font-weight:800;color:#77ff88;font-size:16px;margin-bottom:4px';
+    title.textContent = 'TXT серверы';
+
+    var hint = document.createElement('div');
+    hint.style.cssText = 'font-size:12px;color:#aaa;margin-bottom:10px';
+    hint.textContent = 'TXT-файлы отдельно: видно имя файла, можно удалить конкретный файл, активные TXT-серверы чистятся.';
+
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px';
+
+    function btn(t, cls) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = cls || 'cbi-button';
+      b.textContent = t;
+      return b;
+    }
+
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.txt,text/plain';
+    input.style.display = 'none';
+
+    var importBtn = btn('Импорт TXT', 'cbi-button cbi-button-positive');
+    var clearBtn = btn('Удалить все TXT');
+    var scanBtn = btn('Скан пинга', 'cbi-button cbi-button-action');
+    var showBtn = btn('Показать все');
+
+    var sectionSelect = document.createElement('select');
+    sectionSelect.style.cssText = 'min-width:130px;max-width:190px';
+
+    var modeSelect = document.createElement('select');
+    modeSelect.innerHTML = '<option value="append">добавить</option><option value="replace">заменить</option>';
+    modeSelect.style.cssText = 'width:100px';
+
+    var applyBtn = btn('Применить выбранные', 'cbi-button cbi-button-positive');
+
+    var status = document.createElement('span');
+    status.style.cssText = 'font-size:12px;color:#aaa;min-width:180px';
+
+    var filesBox = document.createElement('div');
+    filesBox.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px 0';
+
+    var list = document.createElement('div');
+    list.style.cssText = 'display:grid;gap:6px;max-width:100%;overflow:hidden';
+
+    row.appendChild(importBtn);
+    row.appendChild(clearBtn);
+    row.appendChild(scanBtn);
+    row.appendChild(showBtn);
+    row.appendChild(sectionSelect);
+    row.appendChild(modeSelect);
+    row.appendChild(applyBtn);
+    row.appendChild(status);
+    row.appendChild(input);
+
+    card.appendChild(title);
+    card.appendChild(hint);
+    card.appendChild(row);
+    card.appendChild(filesBox);
+    card.appendChild(list);
+    place.parentNode.insertBefore(card, place.nextSibling);
+
+    function loadSections() {
+      run(['sections']).then(function(r) {
+        var arr = [];
+        try { arr = JSON.parse(String((r && r.stdout) || '[]')); } catch(e) {}
+        if (!arr.length) arr = ['main'];
+        sectionSelect.innerHTML = '';
+        arr.forEach(function(s) {
+          var o = document.createElement('option');
+          o.value = s;
+          o.textContent = s;
+          sectionSelect.appendChild(o);
+        });
+      }).catch(function() {
+        sectionSelect.innerHTML = '<option value="main">main</option>';
+      });
+    }
+
+    function selectedIds() {
+      var out = [];
+      list.querySelectorAll('input[type="checkbox"][data-id]:checked').forEach(function(x) {
+        out.push(x.getAttribute('data-id'));
+      });
+      return out;
+    }
+
+    function groupFiles() {
+      var map = {};
+      items.forEach(function(it) {
+        if (!map[it.file_id]) map[it.file_id] = { id: it.file_id, name: it.file_name || 'TXT файл', count: 0 };
+        map[it.file_id].count++;
+      });
+      return Object.keys(map).map(function(k) { return map[k]; });
+    }
+
+    function renderFiles() {
+      filesBox.innerHTML = '';
+      var files = groupFiles();
+
+      if (!files.length) {
+        var empty = document.createElement('div');
+        empty.style.cssText = 'font-size:12px;color:#888';
+        empty.textContent = 'TXT-файлов пока нет.';
+        filesBox.appendChild(empty);
+        return;
+      }
+
+      files.forEach(function(f) {
+        var chip = document.createElement('div');
+        chip.style.cssText = 'display:flex;gap:6px;align-items:center;max-width:100%;padding:5px 8px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(255,255,255,.03)';
+
+        var name = document.createElement('span');
+        name.style.cssText = 'font-size:12px;color:#ddd;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        name.title = f.name;
+        name.textContent = f.name + ' (' + f.count + ')';
+
+        var del = btn('Удалить файл');
+        del.style.cssText = 'font-size:11px;padding:2px 7px;color:#ff8a8a';
+        del.onclick = function(ev) {
+          ev.preventDefault();
+          if (!confirm('Удалить TXT файл "' + f.name + '" и убрать его серверы из активных?')) return;
+
+          status.textContent = 'Удаляю TXT файл...';
+          run(['delete-file-v355', f.id, f.name || 'TXT файл']).then(function(r) {
+            status.textContent = String((r && r.stdout) || '').trim() || 'TXT файл удалён';
+            setTimeout(function(){ location.href = location.pathname + '?v=v355_delete_' + Date.now(); }, 1000); /* SUBSYNC_DELETE_FILE_RELOAD_V355 */
+            setTimeout(function(){ location.href = location.pathname + '?v=v353_delete_' + Date.now(); }, 1200); /* SUBSYNC_DELETE_FILE_RELOAD_V353 */
+            setTimeout(function(){ location.href = location.pathname + '?v=v352_delete_' + Date.now(); }, 1500); /* SUBSYNC_DELETE_FILE_RELOAD_V352 */
+            load();
+          }).catch(function(e) {
+            status.textContent = 'Ошибка удаления файла: ' + (e && e.message ? e.message : e);
+          });
+        };
+
+        chip.appendChild(name);
+        chip.appendChild(del);
+        filesBox.appendChild(chip);
+      });
+    }
+
+    function render() {
+      items.sort(function(a, b) { return pingNum(a.ping) - pingNum(b.ping); });
+      renderFiles();
+      list.innerHTML = '';
+
+      if (!items.length) {
+        list.innerHTML = '<div style="font-size:12px;color:#888">TXT серверов пока нет.</div>';
+        status.textContent = '0 серверов';
+        showBtn.style.display = 'none';
+        return;
+      }
+
+      showBtn.style.display = items.length > 25 ? 'inline-block' : 'none';
+      showBtn.textContent = showAll ? 'Скрыть' : 'Показать все';
+
+      var shown = showAll ? items : items.slice(0, 25);
+      status.textContent = items.length + ' TXT серверов, показано ' + shown.length;
+
+      shown.forEach(function(it, idx) {
+        var r = document.createElement('div');
+        r.style.cssText = 'display:grid;grid-template-columns:34px 24px 58px minmax(0,1fr) 80px 70px 94px 72px;gap:7px;align-items:center;max-width:100%;overflow:hidden;padding:7px 8px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.03)';
+
+        var num = document.createElement('div');
+        num.style.cssText = 'font-size:11px;color:#aaa;text-align:right;font-weight:800';
+        num.textContent = String(idx + 1);
+
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.setAttribute('data-id', it.id);
+
+        var proto = document.createElement('div');
+        proto.style.cssText = 'font-size:11px;color:#77ff88;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        proto.textContent = it.proto || '';
+
+        var name = document.createElement('div');
+        name.style.cssText = 'font-size:12px;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0';
+        name.title = (it.file_name || '') + ' | ' + (it.link || '');
+        name.textContent = (it.file_name || 'TXT') + ' • ' + (it.addr || '') + ':' + (it.port || '');
+
+        var ping = document.createElement('div');
+        ping.style.cssText = 'font-size:11px;color:#aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        ping.textContent = it.ping || '—';
+
+        var state = document.createElement('div');
+        state.style.cssText = 'font-size:11px;font-weight:800;color:' + (it.state === 'work' ? '#77ff88' : (it.state === 'no work' ? '#ff6b6b' : '#888'));
+        state.textContent = it.state || '—';
+
+        var used = document.createElement('div');
+        used.style.cssText = 'font-size:11px;font-weight:800;color:' + (it.used === '1' ? '#77ff88' : '#888') + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        used.textContent = it.used === '1' ? 'Используется' : '—';
+
+        var one = btn('Выбрать', 'cbi-button cbi-button-action');
+        one.style.cssText = 'font-size:11px;padding:2px 6px';
+        one.onclick = function(ev) {
+          ev.preventDefault();
+          applyIds([String(it.id)]);
+        };
+
+        r.appendChild(num);
+        r.appendChild(cb);
+        r.appendChild(proto);
+        r.appendChild(name);
+        r.appendChild(ping);
+        r.appendChild(state);
+        r.appendChild(used);
+        r.appendChild(one);
+        list.appendChild(r);
+      });
+    }
+
+    function load() {
+      run(['list']).then(function(r) {
+        try { items = JSON.parse(String((r && r.stdout) || '[]')); }
+        catch(e) { items = []; status.textContent = 'Ошибка чтения TXT списка'; }
+        render();
+      }).catch(function(e) {
+        status.textContent = 'Ошибка TXT: ' + (e && e.message ? e.message : e);
+      });
+    }
+
+    function applyIds(ids) {
+      if (!ids.length) {
+        status.textContent = 'Ничего не выбрано';
+        return;
+      }
+
+      var sec = sectionSelect.value || 'main';
+      var mode = modeSelect.value || 'append';
+      status.textContent = 'Применяю ' + ids.length + ' в ' + sec + '...';
+
+      run(['apply', sec, mode].concat(ids)).then(function(r) {
+        status.textContent = String(((r && r.stdout) || '') + (((r && r.stderr) || '') ? '\n' + r.stderr : '')).trim() || 'Применено';
+        setTimeout(function(){ location.href = location.pathname + '?v=v350_apply_' + Date.now(); }, 1800); /* SUBSYNC_APPLY_REFRESH_V350 */
+        load();
+      }).catch(function(e) {
+        status.textContent = 'Ошибка применения: ' + (e && e.message ? e.message : e);
+      });
+    }
+
+    importBtn.onclick = function(ev) {
+      ev.preventDefault();
+      input.value = '';
+      input.click();
+    };
+
+    input.onchange = function() {
+      var file = input.files && input.files[0];
+      if (!file) return;
+
+      var reader = new FileReader();
+      reader.onload = function() {
+        var body = String(reader.result || '');
+        var n = countLinks(body);
+
+        if (!n) {
+          status.textContent = 'В TXT нет proxy-ссылок';
+          return;
+        }
+
+        importBtn.disabled = true;
+        status.textContent = 'Импортирую: ' + file.name + ' / ' + n;
+
+        Promise.resolve(L.require('fs')).then(function(fs) {
+          return fs.write('/etc/sub-sync/txt-upload-v343.tmp', body).then(function() {
+            return fs.exec('/usr/bin/sub-sync', ['txt-v348', 'import', '/etc/sub-sync/txt-upload-v343.tmp', file.name || 'TXT файл']);
+          });
+        }).then(function(r) {
+          status.textContent = String((r && r.stdout) || '').trim() || 'TXT импортирован';
+          load();
+        }).catch(function(e) {
+          status.textContent = 'Ошибка импорта: ' + (e && e.message ? e.message : e);
+        }).then(function() {
+          importBtn.disabled = false;
+        });
+      };
+
+      reader.readAsText(file);
+    };
+
+    clearBtn.onclick = function(ev) {
+      ev.preventDefault();
+      if (!confirm('Удалить все TXT файлы и убрать их серверы из активных?')) return;
+
+      run(['clear-v355']).then(function(r) {
+        status.textContent = String((r && r.stdout) || '').trim() || 'TXT удалены';
+        setTimeout(function(){ location.href = location.pathname + '?v=v355_clear_' + Date.now(); }, 1000); /* SUBSYNC_CLEAR_FILE_RELOAD_V355 */
+        setTimeout(function(){ location.href = location.pathname + '?v=v353_clear_' + Date.now(); }, 1200); /* SUBSYNC_CLEAR_FILE_RELOAD_V353 */
+        setTimeout(function(){ location.href = location.pathname + '?v=v352_clear_' + Date.now(); }, 1500); /* SUBSYNC_CLEAR_FILE_RELOAD_V352 */
+        load();
+      });
+    };
+
+    scanBtn.onclick = function(ev) {
+      ev.preventDefault();
+
+      if (!items.length) {
+        status.textContent = 'TXT серверов нет';
+        return;
+      }
+
+      var scanItems = showAll ? items.slice() : items.slice(0, 25);
+      scanBtn.disabled = true;
+      var i = 0;
+
+      function next() {
+        if (i >= scanItems.length) {
+          scanBtn.disabled = false;
+          status.textContent = 'Скан завершён. Быстрые сверху.';
+          load();
+          return;
+        }
+
+        status.textContent = 'Скан пинга ' + (i + 1) + '/' + scanItems.length + '...';
+
+        run(['ping', String(scanItems[i].id)]).then(function(r) {
+          var out = String((r && r.stdout) || '').trim();
+          var parts = out.split('|');
+          scanItems[i].ping = parts[0] || 'timeout';
+          scanItems[i].state = parts[1] || 'no work';
+          render();
+        }).catch(function() {
+          scanItems[i].ping = 'timeout';
+          scanItems[i].state = 'no work';
+          render();
+        }).then(function() {
+          i++;
+          setTimeout(next, 100);
+        });
+      }
+
+      next();
+    };
+
+    showBtn.onclick = function(ev) {
+      ev.preventDefault();
+      showAll = !showAll;
+      render();
+    };
+
+    applyBtn.onclick = function(ev) {
+      ev.preventDefault();
+      applyIds(selectedIds());
+    };
+
+    loadSections();
+    load();
+  }
+
+  setTimeout(make, 700);
+  setTimeout(make, 1800);
+  setTimeout(hideOld, 2600);
+  function keepAliveV349() { /* SUBSYNC_TXT_BLOCK_V349_STICKY_KEEPALIVE */
+    try {
+      hideOld();
+      var b = document.getElementById('ss-txt-block-v348');
+      if (b) b.style.display = '';
+      else make();
+    } catch(e) {}
+  }
+  setInterval(keepAliveV349, 2500);
+  try {
+    var moV349 = new MutationObserver(function(){
+      clearTimeout(window.__SUBSYNC_TXT_V349_TIMER);
+      window.__SUBSYNC_TXT_V349_TIMER = setTimeout(keepAliveV349, 350);
+    });
+    moV349.observe(document.body, { childList: true, subtree: true });
+  } catch(e) {}
+})();
+ /* SUBSYNC_TXT_BLOCK_V348_FILES_USED_END */
+/* SUBSYNC_TXT_BLOCK_V346_SAFE_BEGIN */
+(function() {
+  if (window.__SUBSYNC_TXT_BLOCK_V346_SAFE) return;
+  window.__SUBSYNC_TXT_BLOCK_V346_SAFE = true;
+
+  var showAllV346 = false;
+  var itemsV346 = [];
+
+  function pingNumV346(v) {
+    v = String(v || '');
+    if (/timeout|no work|err/i.test(v)) return 999999;
+    var m = v.match(/([0-9.]+)/);
+    return m ? parseFloat(m[1]) : 999998;
+  }
+
+  function hideOldV346() {
+    ['ss-txt-block-v343', 'ss-txt-block-v344', 'ss-txt-block-v345'].forEach(function(id) {
+      var x = document.getElementById(id);
+      if (x) x.style.display = 'none';
+    });
+  }
+
+  function runV346(args) {
+    return Promise.resolve(L.require('fs')).then(function(fs) {
+      return fs.exec('/usr/bin/sub-sync', ['txt-v346'].concat(args));
+    });
+  }
+
+  function countLinksV346(s) {
+    var n = 0;
+    String(s || '').split(/\r?\n/).forEach(function(line) {
+      if (/^\s*(vless|ss|trojan|hy2|hysteria2):\/\//i.test(line)) n++;
+    });
+    return n;
+  }
+
+  function findPlaceV346() {
+    var controls = document.querySelectorAll('.ss-controls');
+    for (var i = 0; i < controls.length; i++) {
+      var t = String(controls[i].textContent || '');
+      if (/Добавить\s+список/i.test(t) && /Добавить\s*\+\s*загрузить\s+серверы/i.test(t))
+        return (controls[i].closest && controls[i].closest('.ss-card')) || controls[i].parentNode;
+    }
+    return null;
+  }
+
+  function makeV346() {
+    hideOldV346();
+
+    if (document.getElementById('ss-txt-block-v346')) return;
+
+    var place = findPlaceV346();
+    if (!place || !place.parentNode) return;
+
+    var card = document.createElement('div');
+    card.id = 'ss-txt-block-v346';
+    card.className = 'ss-card';
+    card.style.cssText = 'margin-top:12px;max-width:100%;overflow:hidden;box-sizing:border-box;border:1px solid rgba(76,175,80,.35);border-radius:14px;padding:12px';
+
+    var title = document.createElement('div');
+    title.style.cssText = 'font-weight:800;color:#77ff88;font-size:16px;margin-bottom:4px';
+    title.textContent = 'TXT серверы';
+
+    var hint = document.createElement('div');
+    hint.style.cssText = 'font-size:12px;color:#aaa;margin-bottom:10px';
+    hint.textContent = '25 строк, Показать все/Скрыть, скан пинга, work/no work, выбор секции списком.';
+
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px';
+
+    function btn(t, cls) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = cls || 'cbi-button';
+      b.textContent = t;
+      return b;
+    }
+
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.txt,text/plain';
+    input.style.display = 'none';
+
+    var importBtn = btn('Импорт TXT', 'cbi-button cbi-button-positive');
+    var clearBtn = btn('Удалить TXT серверы');
+    var scanBtn = btn('Скан пинга', 'cbi-button cbi-button-action');
+    var showBtn = btn('Показать все');
+
+    var sectionSelect = document.createElement('select');
+    sectionSelect.style.cssText = 'min-width:130px;max-width:190px';
+
+    var modeSelect = document.createElement('select');
+    modeSelect.innerHTML = '<option value="append">добавить</option><option value="replace">заменить</option>';
+    modeSelect.style.cssText = 'width:100px';
+
+    var applyBtn = btn('Применить выбранные', 'cbi-button cbi-button-positive');
+
+    var status = document.createElement('span');
+    status.style.cssText = 'font-size:12px;color:#aaa;min-width:170px';
+
+    var list = document.createElement('div');
+    list.style.cssText = 'display:grid;gap:6px;max-width:100%;overflow:hidden';
+
+    row.appendChild(importBtn);
+    row.appendChild(clearBtn);
+    row.appendChild(scanBtn);
+    row.appendChild(showBtn);
+    row.appendChild(sectionSelect);
+    row.appendChild(modeSelect);
+    row.appendChild(applyBtn);
+    row.appendChild(status);
+    row.appendChild(input);
+
+    card.appendChild(title);
+    card.appendChild(hint);
+    card.appendChild(row);
+    card.appendChild(list);
+    place.parentNode.insertBefore(card, place.nextSibling);
+
+    function sortItems() {
+      itemsV346.sort(function(a, b) { return pingNumV346(a.ping) - pingNumV346(b.ping); });
+    }
+
+    function selectedIds() {
+      var out = [];
+      list.querySelectorAll('input[type="checkbox"][data-id]:checked').forEach(function(x) {
+        out.push(x.getAttribute('data-id'));
+      });
+      return out;
+    }
+
+    function render() {
+      sortItems();
+      list.innerHTML = '';
+
+      if (!itemsV346.length) {
+        list.innerHTML = '<div style="font-size:12px;color:#888">TXT серверов пока нет.</div>';
+        status.textContent = '0 серверов';
+        showBtn.style.display = 'none';
+        return;
+      }
+
+      showBtn.style.display = itemsV346.length > 25 ? 'inline-block' : 'none';
+      showBtn.textContent = showAllV346 ? 'Скрыть' : 'Показать все';
+
+      var shown = showAllV346 ? itemsV346 : itemsV346.slice(0, 25);
+      status.textContent = itemsV346.length + ' TXT серверов, показано ' + shown.length;
+
+      shown.forEach(function(it, idx) {
+        var r = document.createElement('div');
+        r.style.cssText = 'display:grid;grid-template-columns:32px 24px 58px minmax(0,1fr) 80px 70px 72px;gap:7px;align-items:center;max-width:100%;overflow:hidden;padding:7px 8px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.03)';
+
+        var cb = document.createElement('input');
+        var num = document.createElement('div'); /* SUBSYNC_TXT_BLOCK_V347_NUMBERS_VISIBLE_PING */
+        num.style.cssText = 'font-size:11px;color:#aaa;text-align:right;font-weight:800';
+        num.textContent = String(idx + 1);
+        cb.type = 'checkbox';
+        cb.setAttribute('data-id', it.id);
+
+        var proto = document.createElement('div');
+        proto.style.cssText = 'font-size:11px;color:#77ff88;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        proto.textContent = it.proto || '';
+
+        var name = document.createElement('div');
+        name.style.cssText = 'font-size:12px;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0';
+        name.title = it.link || '';
+        name.textContent = (it.addr || '') + ':' + (it.port || '');
+
+        var ping = document.createElement('div');
+        ping.style.cssText = 'font-size:11px;color:#aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        ping.textContent = it.ping || '—';
+
+        var state = document.createElement('div');
+        state.style.cssText = 'font-size:11px;font-weight:800;color:' + (it.state === 'work' ? '#77ff88' : (it.state === 'no work' ? '#ff6b6b' : '#888'));
+        state.textContent = it.state || '—';
+
+        var one = btn('Выбрать', 'cbi-button cbi-button-action');
+        one.style.cssText = 'font-size:11px;padding:2px 6px';
+        one.onclick = function(ev) {
+          ev.preventDefault();
+          applyIds([String(it.id)]);
+        };
+
+        r.appendChild(cb);
+        r.insertBefore(num, cb);
+        r.appendChild(proto);
+        r.appendChild(name);
+        r.appendChild(ping);
+        r.appendChild(state);
+        r.appendChild(one);
+        list.appendChild(r);
+      });
+    }
+
+    function load() {
+      runV346(['list']).then(function(r) {
+        try { itemsV346 = JSON.parse(String((r && r.stdout) || '[]')); }
+        catch(e) { itemsV346 = []; status.textContent = 'Ошибка чтения TXT списка'; }
+        render();
+      }).catch(function(e) {
+        status.textContent = 'Ошибка TXT: ' + (e && e.message ? e.message : e);
+      });
+    }
+
+    function loadSections() {
+      runV346(['sections']).then(function(r) {
+        var arr = [];
+        try { arr = JSON.parse(String((r && r.stdout) || '[]')); } catch(e) {}
+        if (!arr.length) arr = ['main'];
+        sectionSelect.innerHTML = '';
+        arr.forEach(function(s) {
+          var o = document.createElement('option');
+          o.value = s;
+          o.textContent = s;
+          sectionSelect.appendChild(o);
+        });
+      }).catch(function() {
+        sectionSelect.innerHTML = '<option value="main">main</option>';
+      });
+    }
+
+    function applyIds(ids) {
+      if (!ids.length) {
+        status.textContent = 'Ничего не выбрано';
+        return;
+      }
+
+      var sec = sectionSelect.value || 'main';
+      var mode = modeSelect.value || 'append';
+
+      status.textContent = 'Применяю ' + ids.length + ' в ' + sec + '...';
+
+      runV346(['apply', sec, mode].concat(ids)).then(function(r) {
+        status.textContent = String(((r && r.stdout) || '') + (((r && r.stderr) || '') ? '\n' + r.stderr : '')).trim() || 'Применено';
+        setTimeout(function(){ location.href = location.pathname + '?v=v350_apply_' + Date.now(); }, 1800); /* SUBSYNC_APPLY_REFRESH_V350 */
+      }).catch(function(e) {
+        status.textContent = 'Ошибка применения: ' + (e && e.message ? e.message : e);
+      });
+    }
+
+    importBtn.onclick = function(ev) {
+      ev.preventDefault();
+      input.value = '';
+      input.click();
+    };
+
+    input.onchange = function() {
+      var file = input.files && input.files[0];
+      if (!file) return;
+
+      var reader = new FileReader();
+      reader.onload = function() {
+        var body = String(reader.result || '');
+        var n = countLinksV346(body);
+
+        if (!n) {
+          status.textContent = 'В TXT нет proxy-ссылок';
+          return;
+        }
+
+        importBtn.disabled = true;
+        status.textContent = 'Импортирую: найдено ' + n;
+
+        Promise.resolve(L.require('fs')).then(function(fs) {
+          return fs.write('/etc/sub-sync/txt-upload-v343.tmp', body).then(function() {
+            return fs.exec('/usr/bin/sub-sync', ['txt-v346', 'import', '/etc/sub-sync/txt-upload-v343.tmp']);
+          });
+        }).then(function(r) {
+          status.textContent = String((r && r.stdout) || '').trim() || 'TXT импортирован';
+          load();
+        }).catch(function(e) {
+          status.textContent = 'Ошибка импорта: ' + (e && e.message ? e.message : e);
+        }).then(function() {
+          importBtn.disabled = false;
+        });
+      };
+      reader.readAsText(file);
+    };
+
+    clearBtn.onclick = function(ev) {
+      ev.preventDefault();
+      if (!confirm('Удалить все TXT серверы?')) return;
+      runV346(['clear-v355']).then(function(r) {
+        status.textContent = String((r && r.stdout) || '').trim() || 'TXT серверы удалены';
+        load();
+      });
+    };
+
+    scanBtn.onclick = function(ev) {
+      ev.preventDefault();
+
+      if (!itemsV346.length) {
+        status.textContent = 'TXT серверов нет';
+        return;
+      }
+
+      scanBtn.disabled = true;
+      sortItems();
+      var scanItemsV347 = showAllV346 ? itemsV346.slice() : itemsV346.slice(0, 25);
+      var i = 0;
+
+      function next() {
+        if (i >= scanItemsV347.length) {
+          scanBtn.disabled = false;
+          status.textContent = 'Скан завершён. work зелёным, no work красным. Быстрые сверху.';
+          load();
+          return;
+        }
+
+        status.textContent = 'Скан пинга ' + (i + 1) + '/' + scanItemsV347.length + '...';
+
+        runV346(['ping', String(scanItemsV347[i].id)]).then(function(r) {
+          var out = String((r && r.stdout) || '').trim();
+          var parts = out.split('|');
+          scanItemsV347[i].ping = parts[0] || 'timeout';
+          scanItemsV347[i].state = parts[1] || 'no work';
+          render();
+        }).catch(function() {
+          scanItemsV347[i].ping = 'timeout';
+          scanItemsV347[i].state = 'no work';
+          render();
+        }).then(function() {
+          i++;
+          setTimeout(next, 100);
+        });
+      }
+
+      next();
+    };
+
+    showBtn.onclick = function(ev) {
+      ev.preventDefault();
+      showAllV346 = !showAllV346;
+      render();
+    };
+
+    applyBtn.onclick = function(ev) {
+      ev.preventDefault();
+      applyIds(selectedIds());
+    };
+
+    loadSections();
+    load();
+  }
+
+  setTimeout(makeV346, 700);
+  setTimeout(makeV346, 1800);
+  setTimeout(hideOldV346, 2600);
+})();
+ /* SUBSYNC_TXT_BLOCK_V346_SAFE_END */
+/* SUBSYNC_TXT_BLOCK_V345_BEGIN */
+(function() {
+  if (window.__SUBSYNC_TXT_BLOCK_V345) return;
+  window.__SUBSYNC_TXT_BLOCK_V345 = true;
+
+  function pingNum(v) {
+    v = String(v || '');
+    if (/timeout|err|ошиб/i.test(v)) return 999999;
+    var m = v.match(/([0-9.]+)/);
+    return m ? parseFloat(m[1]) : 999998;
+  }
+
+  function countLinks(s) {
+    var n = 0;
+    String(s || '').split(/\r?\n/).forEach(function(line) {
+      if (/^\s*(vless|ss|trojan|hy2|hysteria2):\/\//i.test(line)) n++;
+    });
+    return n;
+  }
+
+  function findInsertPlace() {
+    var controls = document.querySelectorAll('.ss-controls');
+    for (var i = 0; i < controls.length; i++) {
+      var t = String(controls[i].textContent || '');
+      if (/Добавить\s+список/i.test(t) && /Добавить\s*\+\s*загрузить\s+серверы/i.test(t))
+        return (controls[i].closest && controls[i].closest('.ss-card')) || controls[i].parentNode;
+    }
+    return null;
+  }
+
+  function makeBlock() {
+    if (document.getElementById('ss-txt-block-v345')) return;
+
+    var place = findInsertPlace();
+    if (!place || !place.parentNode) return;
+
+    var card = document.createElement('div');
+    card.id = 'ss-txt-block-v345';
+    card.className = 'ss-card';
+    card.style.cssText = 'margin-top:12px;max-width:100%;overflow:hidden;box-sizing:border-box;border:1px solid rgba(76,175,80,.35);border-radius:14px;padding:12px';
+
+    card.innerHTML =
+      '<div style="font-weight:800;color:#77ff88;font-size:16px;margin-bottom:4px">TXT серверы</div>' +
+      '<div style="font-size:12px;color:#aaa;margin-bottom:10px">Отдельный TXT-список: скан пинга, сортировка и применение в выбранную Podkop-секцию.</div>';
+
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px';
+
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.txt,text/plain';
+    input.style.display = 'none';
+
+    function btn(text, cls) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = cls || 'cbi-button';
+      b.textContent = text;
+      return b;
+    }
+
+    var importBtn = btn('Импорт TXT', 'cbi-button cbi-button-positive');
+    var clearBtn = btn('Удалить TXT серверы');
+    var scanBtn = btn('Скан пинга', 'cbi-button cbi-button-action');
+    var applyBtn = btn('Применить выбранные', 'cbi-button cbi-button-positive');
+
+    var sectionSelect = document.createElement('select');
+    sectionSelect.style.cssText = 'min-width:130px;max-width:180px';
+
+    var modeSelect = document.createElement('select');
+    modeSelect.innerHTML = '<option value="append">добавить</option><option value="replace">заменить</option>';
+    modeSelect.style.cssText = 'width:100px';
+
+    var status = document.createElement('span');
+    status.style.cssText = 'font-size:12px;color:#aaa;min-width:170px';
+
+    var list = document.createElement('div');
+    list.style.cssText = 'display:grid;gap:6px;max-width:100%;overflow:hidden';
+
+    row.appendChild(importBtn);
+    row.appendChild(clearBtn);
+    row.appendChild(scanBtn);
+    row.appendChild(sectionSelect);
+    row.appendChild(modeSelect);
+    row.appendChild(applyBtn);
+    row.appendChild(status);
+    row.appendChild(input);
+
+    card.appendChild(row);
+    card.appendChild(list);
+    place.parentNode.insertBefore(card, place.nextSibling);
+
+    var items = [];
+
+    function run(args) {
+      return Promise.resolve(L.require('fs')).then(function(fs) {
+        return fs.exec('/usr/bin/sub-sync', ['txt-v345'].concat(args));
+      });
+    }
+
+    function sortByPing() {
+      items.sort(function(a, b) {
+        return pingNum(a.ping) - pingNum(b.ping);
+      });
+    }
+
+    function selectedIds() {
+      var out = [];
+      list.querySelectorAll('input[type="checkbox"][data-id]:checked').forEach(function(x) {
+        out.push(x.getAttribute('data-id'));
+      });
+      return out;
+    }
+
+    function render() {
+      sortByPing();
+      list.innerHTML = '';
+
+      if (!items.length) {
+        list.innerHTML = '<div style="font-size:12px;color:#888">TXT серверов пока нет.</div>';
+        status.textContent = '0 серверов';
+        return;
+      }
+
+      status.textContent = items.length + ' TXT серверов';
+
+      items.slice(0, 160).forEach(function(it) {
+        var r = document.createElement('div');
+        r.style.cssText = 'display:grid;grid-template-columns:24px 58px minmax(0,1fr) 76px 72px 72px;gap:7px;align-items:center;max-width:100%;overflow:hidden;padding:7px 8px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.03)';
+
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.setAttribute('data-id', it.id);
+
+        var proto = document.createElement('div');
+        proto.style.cssText = 'font-size:11px;color:#77ff88;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        proto.textContent = it.proto || '';
+
+        var name = document.createElement('div');
+        name.style.cssText = 'font-size:12px;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0';
+        name.title = it.link || '';
+        name.textContent = (it.addr || '') + ':' + (it.port || '');
+
+        var ping = document.createElement('div');
+        ping.style.cssText = 'font-size:11px;color:' + (pingNum(it.ping) < 999998 ? '#77ff88' : '#aaa') + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        ping.textContent = it.ping || '—';
+
+        var one = btn('Выбрать', 'cbi-button cbi-button-action');
+        one.style.cssText = 'font-size:11px;padding:2px 6px';
+        one.onclick = function(ev) {
+          ev.preventDefault();
+          applyIds([String(it.id)]);
+        };
+
+        var pingBtn = btn('Пинг', 'cbi-button');
+        pingBtn.style.cssText = 'font-size:11px;padding:2px 6px';
+        pingBtn.onclick = function(ev) {
+          ev.preventDefault();
+          pingBtn.textContent = '...';
+          run(['ping', String(it.id)]).then(function(r) {
+            it.ping = String((r && r.stdout) || '').trim() || 'timeout';
+            render();
+          });
+        };
+
+        r.appendChild(cb);
+        r.appendChild(proto);
+        r.appendChild(name);
+        r.appendChild(ping);
+        r.appendChild(pingBtn);
+        r.appendChild(one);
+        list.appendChild(r);
+      });
+    }
+
+    function load() {
+      run(['list']).then(function(r) {
+        try { items = JSON.parse(String((r && r.stdout) || '[]')); }
+        catch(e) { items = []; status.textContent = 'Ошибка чтения TXT списка'; }
+        render();
+      }).catch(function(e) {
+        status.textContent = 'Ошибка TXT: ' + (e && e.message ? e.message : e);
+      });
+    }
+
+    function loadSections() {
+      run(['sections']).then(function(r) {
+        var arr = [];
+        try { arr = JSON.parse(String((r && r.stdout) || '[]')); } catch(e) {}
+        if (!arr.length) arr = ['main'];
+        sectionSelect.innerHTML = '';
+        arr.forEach(function(s) {
+          var o = document.createElement('option');
+          o.value = s;
+          o.textContent = s;
+          sectionSelect.appendChild(o);
+        });
+      }).catch(function() {
+        sectionSelect.innerHTML = '<option value="main">main</option>';
+      });
+    }
+
+    function applyIds(ids) {
+      if (!ids.length) {
+        status.textContent = 'Ничего не выбрано';
+        return;
+      }
+
+      var sec = sectionSelect.value || 'main';
+      var mode = modeSelect.value || 'append';
+
+      status.textContent = 'Применяю ' + ids.length + ' в секцию ' + sec + '...';
+
+      run(['apply', sec, mode].concat(ids)).then(function(r) {
+        status.textContent = String(((r && r.stdout) || '') + (((r && r.stderr) || '') ? '\n' + r.stderr : '')).trim() || 'Применено';
+        setTimeout(function(){ location.href = location.pathname + '?v=v350_apply_' + Date.now(); }, 1800); /* SUBSYNC_APPLY_REFRESH_V350 */
+      }).catch(function(e) {
+        status.textContent = 'Ошибка применения: ' + (e && e.message ? e.message : e);
+      });
+    }
+
+    importBtn.onclick = function(ev) {
+      ev.preventDefault();
+      input.value = '';
+      input.click();
+    };
+
+    input.onchange = function() {
+      var file = input.files && input.files[0];
+      if (!file) return;
+
+      var reader = new FileReader();
+      reader.onload = function() {
+        var body = String(reader.result || '');
+        var n = countLinks(body);
+        if (!n) {
+          status.textContent = 'В TXT нет proxy-ссылок';
+          return;
+        }
+
+        importBtn.disabled = true;
+        status.textContent = 'Импортирую: найдено ' + n;
+
+        Promise.resolve(L.require('fs')).then(function(fs) {
+          return fs.write('/etc/sub-sync/txt-upload-v343.tmp', body).then(function() {
+            return fs.exec('/usr/bin/sub-sync', ['txt-v345', 'import', '/etc/sub-sync/txt-upload-v343.tmp']);
+          });
+        }).then(function(r) {
+          status.textContent = String((r && r.stdout) || '').trim() || 'TXT импортирован';
+          load();
+        }).catch(function(e) {
+          status.textContent = 'Ошибка импорта: ' + (e && e.message ? e.message : e);
+        }).then(function() {
+          importBtn.disabled = false;
+        });
+      };
+      reader.readAsText(file);
+    };
+
+    clearBtn.onclick = function(ev) {
+      ev.preventDefault();
+      if (!confirm('Удалить все TXT серверы?')) return;
+      run(['clear-v355']).then(function(r) {
+        status.textContent = String((r && r.stdout) || '').trim() || 'TXT серверы удалены';
+        load();
+      });
+    };
+
+    scanBtn.onclick = function(ev) {
+      ev.preventDefault();
+      if (!items.length) {
+        status.textContent = 'TXT серверов нет';
+        return;
+      }
+
+      scanBtn.disabled = true;
+      var i = 0;
+
+      function next() {
+        if (i >= items.length) {
+          scanBtn.disabled = false;
+          status.textContent = 'Скан пинга завершён. Быстрые сверху.';
+          render();
+          return;
+        }
+
+        status.textContent = 'Скан пинга ' + (i + 1) + '/' + items.length + '...';
+
+        run(['ping', String(items[i].id)]).then(function(r) {
+          items[i].ping = String((r && r.stdout) || '').trim() || 'timeout';
+        }).catch(function() {
+          items[i].ping = 'timeout';
+        }).then(function() {
+          i++;
+          render();
+          setTimeout(next, 100);
+        });
+      }
+
+      next();
+    };
+
+    applyBtn.onclick = function(ev) {
+      ev.preventDefault();
+      applyIds(selectedIds());
+    };
+
+    loadSections();
+    load();
+  }
+
+  setTimeout(makeBlock, 700);
+  setTimeout(makeBlock, 1800);
+})();
+ /* SUBSYNC_TXT_BLOCK_V345_END */
 /* SUBSYNC_MOVE_MANUAL_REFRESH_BUTTON_ONLY_V328_BEGIN */
 (function(){
   if (window.__SUBSYNC_MOVE_MANUAL_REFRESH_BUTTON_ONLY_V328) return;
@@ -2750,7 +3845,7 @@ syncAllBtnStates(sec3);
                     var sectionCreateCardV45B = E('div', { 'class': 'ss-card', 'style': 'margin-top:10px' }, [
                             E('h3', {}, 'Создать Podkop-секцию'),
                             E('div', { 'class': 'ss-label', 'style': 'margin-bottom:8px' },
-                                    'Порядок: создай секцию → выбери серверы ниже в Podcop Sub v666 → серверы сразу попадут в выбранную секцию → обнови страницу. Нижнюю кнопку LuCI "Сохранить/Применить" не нажимай.'),
+                                    'Порядок: создай секцию → выбери Серверы → серверы сразу попадут в выбранную секцию → обнови страницу. После обновление страницы можно нажать Нижнюю кнопку LuCI "Сохранить/Применить"'),
                             E('div', { 'class': 'ss-controls' }, [
                                     sectionCreateInputV45B,
                                     E('button', {

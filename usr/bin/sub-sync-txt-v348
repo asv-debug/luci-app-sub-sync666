@@ -1,0 +1,993 @@
+#!/bin/sh
+# SUBSYNC_TXT_BLOCK_V348_FILES_USED_HELPER
+set -u
+
+DATA="/etc/sub-sync"
+OLDTXT="$DATA/txt-links-v343.txt"
+FILES="$DATA/txt-files-v348.tsv"
+UPLOAD="$DATA/txt-upload-v343.tmp"
+PING="$DATA/txt-ping-v348.tsv"
+SERVERS="$DATA/servers.json"
+
+mkdir -p "$DATA"
+
+trim() { printf '%s' "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'; }
+jesc() { printf '%s' "$1" | sed 's/\\/\\\\/g;s/"/\\"/g' | tr -d '\r\n'; }
+safe_tsv() { printf '%s' "$1" | tr '\t\r\n' '   ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'; }
+
+is_link() {
+  case "$1" in
+    vless://*|ss://*|trojan://*|hy2://*|hysteria2://*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+addr_from_link() {
+  l="$1"
+  rest="${l#*://}"
+  case "$rest" in *@*) rest="${rest#*@}" ;; esac
+  rest="${rest%%\?*}"
+  rest="${rest%%#*}"
+  rest="${rest%/}"
+  addr="${rest%%:*}"
+  [ -n "$addr" ] || addr="unknown"
+  printf '%s' "$addr"
+}
+
+port_from_link() {
+  l="$1"
+  rest="${l#*://}"
+  case "$rest" in *@*) rest="${rest#*@}" ;; esac
+  rest="${rest%%\?*}"
+  rest="${rest%%#*}"
+  rest="${rest%/}"
+  p="$(printf '%s' "$rest" | sed -n 's/^[^:]*:\([0-9][0-9]*\).*$/\1/p' | head -n 1)"
+  [ -n "$p" ] || p="443"
+  printf '%s' "$p"
+}
+
+sync_oldtxt() {
+  awk -F '\t' 'NF>=3 {print $3}' "$FILES" 2>/dev/null | awk 'NF && !seen[$0]++' > "$OLDTXT.tmp.$$" || true
+  mv -f "$OLDTXT.tmp.$$" "$OLDTXT"
+}
+
+migrate_old() {
+  [ -s "$FILES" ] && return 0
+  [ -s "$OLDTXT" ] || return 0
+
+  fid="legacy"
+  fname="Старый TXT импорт"
+
+  while IFS= read -r line; do
+    line="$(trim "$line")"
+    is_link "$line" || continue
+    printf '%s\t%s\t%s\n' "$fid" "$fname" "$line" >> "$FILES"
+  done < "$OLDTXT"
+
+  sync_oldtxt
+}
+
+link_by_id() {
+  want="$1"
+  migrate_old
+  awk -F '\t' -v want="$want" '
+    NF>=3 {
+      n++
+      if (n == want) { print $3; exit }
+    }
+  ' "$FILES"
+}
+
+meta_by_id() {
+  want="$1"
+  migrate_old
+  awk -F '\t' -v want="$want" '
+    NF>=3 {
+      n++
+      if (n == want) { print $1 "\t" $2 "\t" $3; exit }
+    }
+  ' "$FILES"
+}
+
+ping_get() {
+  key="$1"
+  awk -F '\t' -v k="$key" '$1==k {print $2}' "$PING" 2>/dev/null | tail -n 1
+}
+
+ping_set() {
+  key="$1"
+  val="$2"
+  tmp="$PING.tmp.$$"
+  awk -F '\t' -v k="$key" '$1!=k {print}' "$PING" 2>/dev/null > "$tmp" || true
+  printf '%s\t%s\n' "$key" "$val" >> "$tmp"
+  mv -f "$tmp" "$PING"
+}
+
+used_check() {
+  addr="$1"
+  port="$2"
+  [ -f /etc/config/podkop ] || return 1
+
+  for s in $(uci show podkop 2>/dev/null | sed -n 's/^podkop\.\([^.=]*\)\..*/\1/p' | sort -u); do
+    dump="$(uci show podkop."$s" 2>/dev/null || true)"
+    printf '%s\n' "$dump" | grep -Fq "$addr" || continue
+    printf '%s\n' "$dump" | grep -Fq "$port" || continue
+    return 0
+  done
+
+  return 1
+}
+
+remove_active_link() {
+  link="$1"
+  addr="$(addr_from_link "$link")"
+  port="$(port_from_link "$link")"
+  changed=0
+
+  [ -f /etc/config/podkop ] || return 0
+  cp -a /etc/config/podkop /etc/config/podkop.before-txt-v349 2>/dev/null || true
+
+  for s in $(uci show podkop 2>/dev/null | sed -n 's/^podkop\.\([^.=]*\)\..*/\1/p' | sort -u); do
+    dump="$(uci show podkop."$s" 2>/dev/null || true)"
+    hit=0
+    printf '%s\n' "$dump" | grep -Fq "$link" && hit=1
+    if [ "$hit" = "0" ]; then
+      printf '%s\n' "$dump" | grep -Fq "$addr" && printf '%s\n' "$dump" | grep -Fq "$port" && hit=1
+    fi
+    if [ "$hit" = "1" ]; then
+      uci -q delete podkop."$s" 2>/dev/null && changed=1
+    fi
+  done
+
+  tmp="/tmp/podkop-txt-clean-v349.$$"
+  awk -v addr="$addr" -v port="$port" -v link="$link" '
+    function flush(){
+      if (block != "") {
+        hit = 0
+        if (index(block, link) > 0) hit = 1
+        if (index(block, addr) > 0 && index(block, port) > 0) hit = 1
+        if (!hit) printf "%s", block
+        block = ""
+      }
+    }
+    /^config[ \t]/ { flush(); block = $0 "\n"; next }
+    { block = block $0 "\n" }
+    END { flush() }
+  ' /etc/config/podkop > "$tmp"
+
+  if [ -s "$tmp" ] && ! cmp -s "$tmp" /etc/config/podkop; then
+    cp -f "$tmp" /etc/config/podkop
+    changed=1
+  fi
+  rm -f "$tmp"
+
+  if [ "$changed" = "1" ]; then
+    uci commit podkop 2>/dev/null || true
+    /etc/init.d/podkop restart 2>/dev/null || true
+  fi
+
+  return 0
+} # SUBSYNC_TXT_DELETE_ACTIVE_V349
+
+sections_json() {
+  tmp="/tmp/subsync-txt-sections-v348.$$"
+  {
+    echo main
+    uci show podkop 2>/dev/null | sed -n 's/^podkop\.\([^.=]*\)=section$/\1/p'
+  } | awk 'NF && !seen[$0]++' > "$tmp"
+
+  echo "["
+  first=1
+  while IFS= read -r s; do
+    [ -n "$s" ] || continue
+    [ "$first" = "1" ] && first=0 || echo ","
+    printf '"%s"' "$(jesc "$s")"
+  done < "$tmp"
+  echo
+  echo "]"
+  rm -f "$tmp"
+}
+
+list_json() {
+  migrate_old
+
+  echo "["
+  first=1
+  id=0
+
+  [ -s "$FILES" ] || { echo "]"; return 0; }
+
+  while IFS="$(printf '\t')" read -r fid fname link; do
+    [ -n "${fid:-}" ] || continue
+    [ -n "${link:-}" ] || continue
+    link="$(trim "$link")"
+    is_link "$link" || continue
+
+    id=$((id + 1))
+    proto="${link%%://*}"
+    proto_up="$(printf '%s' "$proto" | tr '[:lower:]' '[:upper:]')"
+    addr="$(addr_from_link "$link")"
+    port="$(port_from_link "$link")"
+    key="$addr:$port"
+    pv="$(ping_get "$key")"
+
+    ping=""
+    state=""
+    if [ -n "$pv" ]; then
+      ping="${pv%%|*}"
+      state="${pv#*|}"
+      [ "$state" = "$pv" ] && state=""
+    fi
+
+    used="0"
+    used_check "$addr" "$port" && used="1"
+
+    [ "$first" = "1" ] && first=0 || echo ","
+    printf '{"id":%s,"file_id":"%s","file_name":"%s","proto":"%s","addr":"%s","port":"%s","ping":"%s","state":"%s","used":"%s","link":"%s"}' \
+      "$id" "$(jesc "$fid")" "$(jesc "$fname")" "$(jesc "$proto_up")" "$(jesc "$addr")" "$(jesc "$port")" "$(jesc "$ping")" "$(jesc "$state")" "$used" "$(jesc "$link")"
+  done < "$FILES"
+
+  echo
+  echo "]"
+}
+
+import_file() {
+  file="${1:-$UPLOAD}"
+  fname="${2:-TXT файл}"
+  [ -s "$file" ] || { echo "ERROR: TXT пустой"; return 1; }
+
+  migrate_old
+
+  fid="$(date +%Y%m%d%H%M%S)-$$"
+  fname="$(safe_tsv "$fname")"
+  [ -n "$fname" ] || fname="TXT файл"
+
+  tmp="/tmp/subsync-txt-v348-import.$$"
+  found=0
+
+  tr '\r' '\n' < "$file" | while IFS= read -r line; do
+    line="$(trim "$line")"
+    is_link "$line" && printf '%s\t%s\t%s\n' "$fid" "$fname" "$line"
+  done > "$tmp"
+
+  found="$(awk -F '\t' 'NF>=3 {c++} END{print c+0}' "$tmp")"
+  [ "$found" -gt 0 ] || { rm -f "$tmp"; echo "ERROR: proxy-ссылки не найдены"; return 1; }
+
+  cat "$tmp" >> "$FILES"
+  awk -F '\t' 'NF>=3 && !seen[$3]++ {print}' "$FILES" > "$FILES.tmp.$$"
+  mv -f "$FILES.tmp.$$" "$FILES"
+
+  rm -f "$tmp"
+  sync_oldtxt
+
+  echo "OK: TXT файл добавлен: $fname / серверов: $found"
+}
+
+delete_file() {
+  fid="${1:-}"
+  [ -n "$fid" ] || { echo "ERROR: file id empty"; return 1; }
+
+  migrate_old
+
+  tmp="/tmp/subsync-txt-v348-delete.$$"
+  cnt=0
+
+  awk -F '\t' -v fid="$fid" 'NF>=3 && $1==fid {print $3}' "$FILES" > "$tmp"
+
+  while IFS= read -r link; do
+    [ -n "$link" ] || continue
+    remove_active_link "$link"
+    cnt=$((cnt + 1))
+  done < "$tmp"
+
+  awk -F '\t' -v fid="$fid" 'NF>=3 && $1!=fid {print}' "$FILES" > "$FILES.tmp.$$"
+  mv -f "$FILES.tmp.$$" "$FILES"
+
+  rm -f "$tmp"
+  sync_oldtxt
+
+  echo "OK: TXT файл удалён, активные TXT-серверы очищены: $cnt"
+}
+
+clear_txt() {
+  migrate_old
+
+  awk -F '\t' 'NF>=3 {print $3}' "$FILES" 2>/dev/null | while IFS= read -r link; do
+    remove_active_link "$link"
+  done
+
+  rm -f "$FILES" "$OLDTXT" "$UPLOAD" "$PING"
+  echo "OK: все TXT файлы удалены, активные TXT-серверы очищены"
+}
+
+ping_one() {
+  id="${1:-}"
+  case "$id" in ''|*[!0-9]*) echo "ERROR: bad id"; return 1 ;; esac
+
+  link="$(link_by_id "$id")"
+  [ -n "$link" ] || { echo "ERROR: TXT server not found"; return 1; }
+
+  addr="$(addr_from_link "$link")"
+  port="$(port_from_link "$link")"
+  key="$addr:$port"
+
+  ms="$(ping -c 1 -W 2 "$addr" 2>/dev/null | sed -n 's/.*time=\([0-9.]*\).*/\1/p' | head -n 1)"
+
+  if [ -n "$ms" ]; then
+    val="${ms} ms|work"
+  else
+    val="timeout|no work"
+  fi
+
+  ping_set "$key" "$val"
+  echo "$val"
+}
+
+record_json() {
+  id="$1"
+  link="$2"
+  proto="${link%%://*}"
+  addr="$(addr_from_link "$link")"
+  port="$(port_from_link "$link")"
+  name="$(printf '%s' "$proto" | tr '[:lower:]' '[:upper:]') TXT $addr:$port"
+
+  printf '{"id":%s,"name":"%s","remark":"%s","remarks":"%s","proto":"%s","protocol":"%s","type":"%s","addr":"%s","address":"%s","server":"%s","host":"%s","port":"%s","link":"%s","url":"%s","source":"txt-v348"}' \
+    "$id" \
+    "$(jesc "$name")" "$(jesc "$name")" "$(jesc "$name")" \
+    "$(jesc "$proto")" "$(jesc "$proto")" "$(jesc "$proto")" \
+    "$(jesc "$addr")" "$(jesc "$addr")" "$(jesc "$addr")" "$(jesc "$addr")" \
+    "$(jesc "$port")" "$(jesc "$link")" "$(jesc "$link")"
+}
+
+apply_ids() {
+  section="${1:-main}"
+  mode="${2:-append}"
+  shift 2 || true
+
+  old="/tmp/subsync-txt-v348-old.$$"
+  nums="/tmp/subsync-txt-v348-nums.$$"
+  tmp="/tmp/subsync-txt-v348-servers.$$"
+
+  cp -a "$SERVERS" "$old" 2>/dev/null || echo "[]" > "$old"
+  : > "$nums"
+
+  {
+    echo "["
+    first=1
+    nid=0
+
+    for tid in "$@"; do
+      case "$tid" in ''|*[!0-9]*) continue ;; esac
+      link="$(link_by_id "$tid")"
+      [ -n "$link" ] || continue
+      nid=$((nid + 1))
+      [ "$first" = "1" ] && first=0 || echo ","
+      record_json "$nid" "$link"
+      echo "$nid" >> "$nums"
+    done
+
+    echo
+    echo "]"
+  } > "$tmp"
+
+  cnt="$(wc -l < "$nums" | tr -d ' ')"
+  [ "$cnt" -gt 0 ] || { rm -f "$old" "$nums" "$tmp"; echo "ERROR: nothing selected"; return 1; }
+
+  cp -f "$tmp" "$SERVERS"
+
+  set -- apply-ids "$section" "$mode"
+  while IFS= read -r n; do [ -n "$n" ] && set -- "$@" "$n"; done < "$nums"
+
+  out="$(/usr/bin/sub-sync-autoadd "$@" 2>&1)"
+  rc="$?"
+
+  cp -f "$old" "$SERVERS"
+  rm -f "$old" "$nums" "$tmp"
+
+  printf '%s\n' "$out"
+  [ "$rc" = "0" ] && echo "OK: TXT выбранные применены в секцию $section ($mode)"
+  return "$rc"
+}
+
+# SUBSYNC_REAL_DELETE_FILE_V352_FUNCS_BEGIN
+cleanup_empty_urltest_v352() {
+  changed=0
+
+  [ -f /etc/config/podkop ] || return 0
+
+  tmp="/tmp/podkop-urltest-clean-v352.$$"
+
+  awk '
+    function flush() {
+      if (block == "") return
+
+      is_urltest = 0
+      has_proxy = 0
+
+      if (tolower(block) ~ /url.?test/) is_urltest = 1
+      if (block ~ /:\/\//) has_proxy = 1
+      if (tolower(block) ~ /proxy.*=.?.+|list.*proxy/) has_proxy = 1
+
+      if (is_urltest && !has_proxy) {
+        removed++
+      } else {
+        printf "%s", block
+      }
+
+      block = ""
+    }
+
+    /^config[ \t]+/ {
+      flush()
+      block = $0 "\n"
+      next
+    }
+
+    {
+      block = block $0 "\n"
+    }
+
+    END {
+      flush()
+    }
+  ' /etc/config/podkop > "$tmp"
+
+  if [ -s "$tmp" ] && ! cmp -s "$tmp" /etc/config/podkop; then
+    cp -f "$tmp" /etc/config/podkop
+    changed=1
+  fi
+
+  rm -f "$tmp"
+
+  [ "$changed" = "1" ] && uci commit podkop 2>/dev/null || true
+}
+
+remove_active_link_v352() {
+  link="$1"
+  addr="$(addr_from_link "$link")"
+  port="$(port_from_link "$link")"
+  proto="${link%%://*}"
+  proto_up="$(printf '%s' "$proto" | tr '[:lower:]' '[:upper:]')"
+  name1="$proto_up TXT $addr:$port"
+  name2="$addr:$port"
+  changed=0
+
+  [ -f /etc/config/podkop ] || return 0
+
+  cp -a /etc/config/podkop /etc/config/podkop.before-txt-delete-v352 2>/dev/null || true
+
+  tmp="/tmp/podkop-clean-txt-v352.$$"
+
+  awk -v link="$link" -v addr="$addr" -v port="$port" -v name1="$name1" -v name2="$name2" '
+    function linehit(line) {
+      if (index(line, link) > 0) return 1
+      if (index(line, name1) > 0) return 1
+      if (index(line, name2) > 0) return 1
+      if (index(line, addr) > 0 && index(line, port) > 0) return 1
+      return 0
+    }
+
+    function blockhit(txt) {
+      if (index(txt, link) > 0) return 1
+      if (index(txt, name1) > 0) return 1
+      if (index(txt, name2) > 0) return 1
+      if (index(txt, addr) > 0 && index(txt, port) > 0) return 1
+      return 0
+    }
+
+    function flush() {
+      if (block == "") return
+
+      hit = blockhit(block)
+
+      if (!hit) {
+        printf "%s", block
+      } else if (header ~ /^config[ \t]+section/ || header ~ /^config[ \t]+main/ || header ~ /^config[ \t]+settings/ || header ~ /^config[ \t]+global/) {
+        n = split(block, a, "\n")
+        for (i = 1; i <= n; i++) {
+          if (a[i] == "") continue
+          if (!linehit(a[i])) print a[i]
+        }
+      } else {
+        removed++
+      }
+
+      block = ""
+      header = ""
+    }
+
+    /^config[ \t]+/ {
+      flush()
+      header = $0
+      block = $0 "\n"
+      next
+    }
+
+    {
+      block = block $0 "\n"
+    }
+
+    END {
+      flush()
+    }
+  ' /etc/config/podkop > "$tmp"
+
+  if [ -s "$tmp" ] && ! cmp -s "$tmp" /etc/config/podkop; then
+    cp -f "$tmp" /etc/config/podkop
+    changed=1
+  fi
+
+  rm -f "$tmp"
+
+  cleanup_empty_urltest_v352
+
+  if [ "$changed" = "1" ]; then
+    uci commit podkop 2>/dev/null || true
+  fi
+
+  return 0
+}
+
+txt_v352_delete_file() {
+  fid="${1:-}"
+  fname="${2:-}"
+
+  migrate_old 2>/dev/null || true
+
+  [ -s "$FILES" ] || {
+    echo "OK: TXT файлов уже нет"
+    return 0
+  }
+
+  tmp_links="/tmp/subsync-txt-v352-links.$$"
+  tmp_new="/tmp/subsync-txt-v352-new.$$"
+
+  awk -F '\t' -v fid="$fid" -v fname="$fname" '
+    NF>=3 && (($1 == fid && fid != "") || ($2 == fname && fname != "")) { print $3 }
+  ' "$FILES" > "$tmp_links"
+
+  cnt="$(wc -l < "$tmp_links" | tr -d ' ')"
+
+  if [ "$cnt" = "0" ]; then
+    rm -f "$tmp_links" "$tmp_new"
+    echo "WARN: TXT файл не найден: id=$fid name=$fname"
+    return 0
+  fi
+
+  while IFS= read -r link; do
+    [ -n "$link" ] && remove_active_link_v352 "$link"
+  done < "$tmp_links"
+
+  awk -F '\t' -v fid="$fid" -v fname="$fname" '
+    NF>=3 && !(($1 == fid && fid != "") || ($2 == fname && fname != "")) { print }
+  ' "$FILES" > "$tmp_new"
+
+  mv -f "$tmp_new" "$FILES"
+  rm -f "$tmp_links"
+
+  sync_oldtxt 2>/dev/null || true
+  cleanup_empty_urltest_v352
+
+  uci commit podkop 2>/dev/null || true
+  /etc/init.d/podkop restart 2>/dev/null || true
+
+  left="$(awk -F '\t' -v fid="$fid" -v fname="$fname" 'NF>=3 && (($1 == fid && fid != "") || ($2 == fname && fname != "")) {c++} END{print c+0}' "$FILES" 2>/dev/null)"
+
+  echo "OK: TXT файл удалён: $fname / серверов очищено: $cnt / осталось в TXT: $left"
+}
+
+txt_v352_clear_all() {
+  migrate_old 2>/dev/null || true
+
+  cnt=0
+  awk -F '\t' 'NF>=3 {print $3}' "$FILES" 2>/dev/null | while IFS= read -r link; do
+    [ -n "$link" ] && remove_active_link_v352 "$link"
+  done
+
+  cnt="$(awk -F '\t' 'NF>=3 {c++} END{print c+0}' "$FILES" 2>/dev/null)"
+
+  rm -f "$FILES" "$OLDTXT" "$UPLOAD" "$PING"
+  cleanup_empty_urltest_v352
+
+  uci commit podkop 2>/dev/null || true
+  /etc/init.d/podkop restart 2>/dev/null || true
+
+  echo "OK: все TXT файлы удалены, активные TXT-серверы очищены: $cnt"
+}
+# SUBSYNC_REAL_DELETE_FILE_V352_FUNCS_END
+case "${1:-}" in
+  delete-file-v355) shift; exec /usr/bin/sub-sync-txt-delete-v355 delete-file "${1:-}" "${2:-}" ;; # SUBSYNC_DELETE_FILE_V355_CASE
+  clear-v355) shift; exec /usr/bin/sub-sync-txt-delete-v355 clear ;; # SUBSYNC_DELETE_FILE_V355_CASE
+  delete-file-v353) shift; txt_v353_delete_file "${1:-}" "${2:-}" ;; # SUBSYNC_HARD_DELETE_TXT_ACTIVE_V353_CASE
+  clear-v353) txt_v353_clear_all ;; # SUBSYNC_HARD_DELETE_TXT_ACTIVE_V353_CASE
+  delete-file-v352) shift; txt_v352_delete_file "${1:-}" "${2:-}" ;; # SUBSYNC_REAL_DELETE_FILE_V352_CASE
+  clear-v352) txt_v352_clear_all ;; # SUBSYNC_REAL_DELETE_FILE_V352_CASE
+  delete-file-v350) shift; txt_v350_delete_file "${1:-}" ;; # SUBSYNC_DELETE_ACTIVE_STRONG_V350_CASE
+  clear-v350) txt_v350_clear_all ;; # SUBSYNC_DELETE_ACTIVE_STRONG_V350_CASE
+  import) shift; import_file "${1:-$UPLOAD}" "${2:-TXT файл}" ;;
+  list) list_json ;;
+  clear) clear_txt ;;
+  delete-file) shift; delete_file "${1:-}" ;;
+  ping) shift; ping_one "${1:-}" ;;
+  sections) sections_json ;;
+  apply) shift; apply_ids "$@" ;;
+  *) echo "Usage: $0 import file name | list | clear | delete-file id | ping id | sections | apply section append|replace id..."; exit 1 ;;
+esac
+
+# SUBSYNC_DELETE_ACTIVE_STRONG_V350_BEGIN
+remove_active_link_v350() {
+  link="$1"
+  addr="$(addr_from_link "$link")"
+  port="$(port_from_link "$link")"
+  proto="${link%%://*}"
+  proto_up="$(printf '%s' "$proto" | tr '[:lower:]' '[:upper:]')"
+  name1="$proto_up TXT $addr:$port"
+  name2="$addr:$port"
+  changed=0
+
+  [ -f /etc/config/podkop ] || return 0
+
+  cp -a /etc/config/podkop /etc/config/podkop.before-txt-delete-v350 2>/dev/null || true
+
+  tmp="/tmp/podkop-clean-txt-v350.$$"
+
+  awk -v link="$link" -v addr="$addr" -v port="$port" -v name1="$name1" -v name2="$name2" '
+    function flush() {
+      if (block == "")
+        return
+
+      hit = 0
+      if (index(block, link) > 0) hit = 1
+      if (index(block, name1) > 0) hit = 1
+      if (index(block, name2) > 0) hit = 1
+      if (index(block, addr) > 0 && index(block, port) > 0) hit = 1
+
+      if (hit) {
+        if (header ~ /^config[ \t]+section/ || header ~ /^config[ \t]+main/ || header ~ /^config[ \t]+settings/ || header ~ /^config[ \t]+global/) {
+          n = split(block, a, "\n")
+          for (i = 1; i <= n; i++) {
+            line = a[i]
+            lhit = 0
+            if (index(line, link) > 0) lhit = 1
+            if (index(line, name1) > 0) lhit = 1
+            if (index(line, name2) > 0) lhit = 1
+            if (index(line, addr) > 0 && index(line, port) > 0) lhit = 1
+            if (!lhit && line != "") print line
+          }
+        } else {
+          removed++
+        }
+      } else {
+        printf "%s", block
+      }
+
+      block = ""
+      header = ""
+    }
+
+    /^config[ \t]+/ {
+      flush()
+      header = $0
+      block = $0 "\n"
+      next
+    }
+
+    {
+      block = block $0 "\n"
+    }
+
+    END {
+      flush()
+    }
+  ' /etc/config/podkop > "$tmp"
+
+  if [ -s "$tmp" ] && ! cmp -s "$tmp" /etc/config/podkop; then
+    cp -f "$tmp" /etc/config/podkop
+    changed=1
+  fi
+
+  rm -f "$tmp"
+
+  for s in $(uci show podkop 2>/dev/null | sed -n 's/^podkop\.\([^.=]*\)\..*/\1/p' | sort -u); do
+    dump="$(uci show podkop."$s" 2>/dev/null || true)"
+    hit=0
+    printf '%s\n' "$dump" | grep -Fq "$link" && hit=1
+    printf '%s\n' "$dump" | grep -Fq "$name1" && hit=1
+    printf '%s\n' "$dump" | grep -Fq "$name2" && hit=1
+    if [ "$hit" = "0" ]; then
+      printf '%s\n' "$dump" | grep -Fq "$addr" && printf '%s\n' "$dump" | grep -Fq "$port" && hit=1
+    fi
+
+    [ "$hit" = "1" ] || continue
+
+    typ="$(uci -q get podkop."$s" 2>/dev/null || true)"
+    case "$typ" in
+      section|main|settings|global)
+        for opt in $(printf '%s\n' "$dump" | sed -n "s/^podkop\\.$s\\.\\([^=]*\\)=.*$/\\1/p" | sort -u); do
+          val="$(uci -q get podkop."$s"."$opt" 2>/dev/null || true)"
+          echo "$val" | grep -Fq "$link" && uci -q delete podkop."$s"."$opt" 2>/dev/null && changed=1
+          echo "$val" | grep -Fq "$name1" && uci -q delete podkop."$s"."$opt" 2>/dev/null && changed=1
+          echo "$val" | grep -Fq "$name2" && uci -q delete podkop."$s"."$opt" 2>/dev/null && changed=1
+          echo "$val" | grep -Fq "$addr" && echo "$val" | grep -Fq "$port" && uci -q delete podkop."$s"."$opt" 2>/dev/null && changed=1
+        done
+      ;;
+      *)
+        uci -q delete podkop."$s" 2>/dev/null && changed=1
+      ;;
+    esac
+  done
+
+  if [ "$changed" = "1" ]; then
+    uci commit podkop 2>/dev/null || true
+    /etc/init.d/podkop restart 2>/dev/null || true
+  fi
+
+  return 0
+}
+
+txt_v350_delete_file() {
+  fid="${1:-}"
+  [ -n "$fid" ] || { echo "ERROR: file id empty"; return 1; }
+
+  migrate_old 2>/dev/null || true
+
+  tmp="/tmp/subsync-txt-v350-delete.$$"
+  cnt=0
+
+  awk -F '\t' -v fid="$fid" 'NF>=3 && $1==fid {print $3}' "$FILES" > "$tmp"
+
+  while IFS= read -r link; do
+    [ -n "$link" ] || continue
+    remove_active_link_v350 "$link"
+    cnt=$((cnt + 1))
+  done < "$tmp"
+
+  awk -F '\t' -v fid="$fid" 'NF>=3 && $1!=fid {print}' "$FILES" > "$FILES.tmp.$$"
+  mv -f "$FILES.tmp.$$" "$FILES"
+
+  rm -f "$tmp"
+  sync_oldtxt 2>/dev/null || true
+
+  echo "OK: TXT файл удалён, активные TXT-серверы очищены: $cnt"
+}
+
+txt_v350_clear_all() {
+  migrate_old 2>/dev/null || true
+
+  awk -F '\t' 'NF>=3 {print $3}' "$FILES" 2>/dev/null | while IFS= read -r link; do
+    [ -n "$link" ] && remove_active_link_v350 "$link"
+  done
+
+  rm -f "$FILES" "$OLDTXT" "$UPLOAD" "$PING"
+  echo "OK: все TXT файлы удалены, активные TXT-серверы очищены"
+}
+# SUBSYNC_DELETE_ACTIVE_STRONG_V350_END
+
+# SUBSYNC_HARD_DELETE_TXT_ACTIVE_V353_BEGIN
+podkop_clean_by_txt_link_v353() {
+  link="$1"
+  addr="$(addr_from_link "$link")"
+  port="$(port_from_link "$link")"
+  proto="${link%%://*}"
+  proto_up="$(printf '%s' "$proto" | tr '[:lower:]' '[:upper:]')"
+  name1="$proto_up TXT $addr:$port"
+  name2="$addr:$port"
+  ids="/tmp/podkop-txt-hit-ids-v353.$$"
+  tmp="/tmp/podkop-hard-clean-v353.$$"
+
+  [ -f /etc/config/podkop ] || return 0
+
+  : > "$ids"
+
+  awk -v link="$link" -v addr="$addr" -v port="$port" -v name1="$name1" -v name2="$name2" -v ids="$ids" '
+    function getid(h, a) {
+      gsub(/\047/, "", h)
+      split(h, a, /[ \t]+/)
+      return a[3]
+    }
+
+    function hit(txt) {
+      if (index(txt, link) > 0) return 1
+      if (index(txt, name1) > 0) return 1
+      if (index(txt, name2) > 0) return 1
+      if (index(txt, addr) > 0 && index(txt, port) > 0) return 1
+      return 0
+    }
+
+    function flush() {
+      if (block == "") return
+
+      if (hit(block)) {
+        id = getid(header)
+        if (id != "") print id >> ids
+      }
+
+      block = ""
+      header = ""
+    }
+
+    /^config[ \t]+/ {
+      flush()
+      header = $0
+      block = $0 "\n"
+      next
+    }
+
+    { block = block $0 "\n" }
+
+    END { flush() }
+  ' /etc/config/podkop
+
+  sort -u "$ids" > "$ids.sorted"
+  mv -f "$ids.sorted" "$ids"
+
+  awk -v link="$link" -v addr="$addr" -v port="$port" -v name1="$name1" -v name2="$name2" -v idsfile="$ids" '
+    BEGIN {
+      while ((getline id < idsfile) > 0) {
+        if (id != "") ids[id] = 1
+      }
+      close(idsfile)
+    }
+
+    function getid(h, a) {
+      x = h
+      gsub(/\047/, "", x)
+      split(x, a, /[ \t]+/)
+      return a[3]
+    }
+
+    function linehit(line, k) {
+      if (index(line, link) > 0) return 1
+      if (index(line, name1) > 0) return 1
+      if (index(line, name2) > 0) return 1
+      if (index(line, addr) > 0 && index(line, port) > 0) return 1
+      for (k in ids) {
+        if (k != "" && index(line, k) > 0) return 1
+      }
+      return 0
+    }
+
+    function blockhit(txt, k) {
+      if (index(txt, link) > 0) return 1
+      if (index(txt, name1) > 0) return 1
+      if (index(txt, name2) > 0) return 1
+      if (index(txt, addr) > 0 && index(txt, port) > 0) return 1
+      for (k in ids) {
+        if (k != "" && index(txt, k) > 0) return 1
+      }
+      return 0
+    }
+
+    function empty_urltest(txt) {
+      low = tolower(txt)
+      if (low !~ /url.?test/) return 0
+      if (txt ~ /:\/\//) return 0
+      if (low ~ /proxy.*=.?.+|list.*proxy/) return 0
+      return 1
+    }
+
+    function flush() {
+      if (block == "") return
+
+      id = getid(header)
+
+      if (id != "" && ids[id]) {
+        removed++
+      } else if (blockhit(block)) {
+        n = split(block, a, "\n")
+        out = ""
+        for (i = 1; i <= n; i++) {
+          if (a[i] == "") continue
+          if (!linehit(a[i])) out = out a[i] "\n"
+        }
+        if (!empty_urltest(out)) printf "%s", out
+      } else if (!empty_urltest(block)) {
+        printf "%s", block
+      }
+
+      block = ""
+      header = ""
+    }
+
+    /^config[ \t]+/ {
+      flush()
+      header = $0
+      block = $0 "\n"
+      next
+    }
+
+    { block = block $0 "\n" }
+
+    END { flush() }
+  ' /etc/config/podkop > "$tmp"
+
+  if [ -s "$tmp" ]; then
+    cp -f "$tmp" /etc/config/podkop
+  fi
+
+  rm -f "$tmp" "$ids"
+}
+
+txt_v353_delete_file() {
+  fid="${1:-}"
+  fname="${2:-}"
+
+  migrate_old 2>/dev/null || true
+
+  [ -s "$FILES" ] || {
+    echo "OK: TXT файлов уже нет"
+    return 0
+  }
+
+  links="/tmp/subsync-v353-delete-links.$$"
+  new="/tmp/subsync-v353-new-files.$$"
+
+  awk -F '\t' -v fid="$fid" -v fname="$fname" '
+    NF>=3 && (($1 == fid && fid != "") || ($2 == fname && fname != "")) { print $3 }
+  ' "$FILES" > "$links"
+
+  cnt="$(awk 'NF {c++} END{print c+0}' "$links")"
+
+  if [ "$cnt" = "0" ] && [ "$(awk -F '\t' 'NF>=3 {print $2}' "$FILES" | sort -u | wc -l | tr -d ' ')" = "1" ]; then
+    awk -F '\t' 'NF>=3 {print $3}' "$FILES" > "$links"
+    cnt="$(awk 'NF {c++} END{print c+0}' "$links")"
+    fname="$(awk -F '\t' 'NF>=3 {print $2; exit}' "$FILES")"
+  fi
+
+  if [ "$cnt" = "0" ]; then
+    rm -f "$links" "$new"
+    echo "WARN: TXT файл не найден: id=$fid name=$fname"
+    return 0
+  fi
+
+  cp -a /etc/config/podkop /etc/config/podkop.before-v353-delete 2>/dev/null || true
+
+  while IFS= read -r link; do
+    [ -n "$link" ] && podkop_clean_by_txt_link_v353 "$link"
+  done < "$links"
+
+  awk -F '\t' -v fid="$fid" -v fname="$fname" '
+    NF>=3 && !(($1 == fid && fid != "") || ($2 == fname && fname != "")) { print }
+  ' "$FILES" > "$new"
+
+  if [ ! -s "$new" ] || [ "$(awk -F '\t' 'NF>=3 {print $2}' "$FILES" | sort -u | wc -l | tr -d ' ')" = "1" ]; then
+    : > "$new"
+  fi
+
+  mv -f "$new" "$FILES"
+  rm -f "$links"
+
+  sync_oldtxt 2>/dev/null || true
+
+  uci commit podkop 2>/dev/null || true
+  /etc/init.d/podkop restart 2>/dev/null || true
+
+  left="$(awk -F '\t' 'NF>=3 {c++} END{print c+0}' "$FILES" 2>/dev/null)"
+  echo "OK: TXT файл удалён: $fname / серверов очищено: $cnt / осталось TXT-серверов: $left"
+}
+
+txt_v353_clear_all() {
+  migrate_old 2>/dev/null || true
+
+  [ -s "$FILES" ] || {
+    rm -f "$OLDTXT" "$UPLOAD" "$PING"
+    echo "OK: TXT файлов уже нет"
+    return 0
+  }
+
+  cp -a /etc/config/podkop /etc/config/podkop.before-v353-clear 2>/dev/null || true
+
+  cnt="$(awk -F '\t' 'NF>=3 {c++} END{print c+0}' "$FILES")"
+
+  awk -F '\t' 'NF>=3 {print $3}' "$FILES" | while IFS= read -r link; do
+    [ -n "$link" ] && podkop_clean_by_txt_link_v353 "$link"
+  done
+
+  rm -f "$FILES" "$OLDTXT" "$UPLOAD" "$PING"
+
+  uci commit podkop 2>/dev/null || true
+  /etc/init.d/podkop restart 2>/dev/null || true
+
+  echo "OK: все TXT файлы удалены, активные TXT-серверы очищены: $cnt"
+}
+# SUBSYNC_HARD_DELETE_TXT_ACTIVE_V353_END

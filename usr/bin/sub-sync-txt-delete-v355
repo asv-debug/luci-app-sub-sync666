@@ -1,0 +1,154 @@
+#!/bin/sh
+# SUBSYNC_REAL_TXT_FILE_DELETE_V355
+set -u
+
+DATA="/etc/sub-sync"
+FILES="$DATA/txt-files-v348.tsv"
+OLDTXT="$DATA/txt-links-v343.txt"
+PING="$DATA/txt-ping-v348.tsv"
+SERVERS="$DATA/servers.json"
+LINKS="$DATA/links.txt"
+UPLOAD="$DATA/txt-upload-v343.tmp"
+
+mkdir -p "$DATA"
+
+addr_from_link() {
+  l="$1"
+  rest="${l#*://}"
+  case "$rest" in *@*) rest="${rest#*@}" ;; esac
+  rest="${rest%%\?*}"
+  rest="${rest%%#*}"
+  rest="${rest%/}"
+  addr="${rest%%:*}"
+  [ -n "$addr" ] || addr="unknown"
+  printf '%s' "$addr"
+}
+
+port_from_link() {
+  l="$1"
+  rest="${l#*://}"
+  case "$rest" in *@*) rest="${rest#*@}" ;; esac
+  rest="${rest%%\?*}"
+  rest="${rest%%#*}"
+  rest="${rest%/}"
+  p="$(printf '%s' "$rest" | sed -n 's/^[^:]*:\([0-9][0-9]*\).*$/\1/p' | head -n 1)"
+  [ -n "$p" ] || p="443"
+  printf '%s' "$p"
+}
+
+sync_oldtxt() {
+  if [ -s "$FILES" ]; then
+    awk -F '\t' 'NF>=3 {print $3}' "$FILES" | awk 'NF && !seen[$0]++' > "$OLDTXT.tmp.$$"
+    mv -f "$OLDTXT.tmp.$$" "$OLDTXT"
+  else
+    rm -f "$OLDTXT"
+  fi
+}
+
+clean_ping() {
+  links_file="$1"
+  [ -s "$PING" ] || return 0
+  [ -s "$links_file" ] || return 0
+
+  keys="/tmp/subsync-v355-keys.$$"
+  while IFS= read -r link; do
+    [ -n "$link" ] || continue
+    printf '%s:%s\n' "$(addr_from_link "$link")" "$(port_from_link "$link")"
+  done < "$links_file" | awk 'NF && !seen[$0]++' > "$keys"
+
+  awk -F '\t' 'NR==FNR {bad[$1]=1; next} !($1 in bad)' "$keys" "$PING" > "$PING.tmp.$$" || true
+  mv -f "$PING.tmp.$$" "$PING"
+  rm -f "$keys"
+}
+
+clean_links_txt() {
+  links_file="$1"
+  [ -s "$LINKS" ] || return 0
+  [ -s "$links_file" ] || return 0
+
+  grep -vFf "$links_file" "$LINKS" > "$LINKS.tmp.$$" 2>/dev/null || true
+  mv -f "$LINKS.tmp.$$" "$LINKS"
+}
+
+clean_servers_json_txt() {
+  # Это список активных/выбранных серверов Sub Sync. Если там TXT-хвост — чистим TXT-активные.
+  if [ -s "$SERVERS" ] && grep -Eiq 'txt-v[0-9]|"source":"txt| TXT ' "$SERVERS"; then
+    printf '[]\n' > "$SERVERS"
+  fi
+}
+
+delete_file() {
+  fid="${1:-}"
+  fname="${2:-}"
+
+  links="/tmp/subsync-v355-delete-links.$$"
+  new="/tmp/subsync-v355-files-new.$$"
+
+  [ -s "$FILES" ] || {
+    rm -f "$OLDTXT" "$PING" "$UPLOAD"
+    clean_servers_json_txt
+    echo "OK: TXT файлов уже нет"
+    return 0
+  }
+
+  awk -F '\t' -v fid="$fid" -v fname="$fname" '
+    NF>=3 && (($1 == fid && fid != "") || ($2 == fname && fname != "")) { print $3 }
+  ' "$FILES" > "$links"
+
+  cnt="$(awk 'NF {c++} END{print c+0}' "$links")"
+
+  # Если в базе один TXT-файл, удаляем его даже если id/name не совпали из-за старого JS.
+  if [ "$cnt" = "0" ] && [ "$(awk -F '\t' 'NF>=3 {print $2}' "$FILES" | sort -u | wc -l | tr -d ' ')" = "1" ]; then
+    awk -F '\t' 'NF>=3 {print $3}' "$FILES" > "$links"
+    cnt="$(awk 'NF {c++} END{print c+0}' "$links")"
+    fname="$(awk -F '\t' 'NF>=3 {print $2; exit}' "$FILES")"
+  fi
+
+  if [ "$cnt" = "0" ]; then
+    rm -f "$links" "$new"
+    echo "WARN: TXT файл не найден: id=$fid name=$fname"
+    return 0
+  fi
+
+  clean_ping "$links"
+  clean_links_txt "$links"
+  clean_servers_json_txt
+
+  awk -F '\t' -v fid="$fid" -v fname="$fname" '
+    NF>=3 && !(($1 == fid && fid != "") || ($2 == fname && fname != "")) { print }
+  ' "$FILES" > "$new"
+
+  # Если был один файл — база должна стать пустой.
+  if [ "$(awk -F '\t' 'NF>=3 {print $2}' "$FILES" | sort -u | wc -l | tr -d ' ')" = "1" ]; then
+    : > "$new"
+  fi
+
+  mv -f "$new" "$FILES"
+  rm -f "$links"
+
+  if [ ! -s "$FILES" ]; then
+    rm -f "$FILES" "$OLDTXT" "$PING" "$UPLOAD"
+  else
+    sync_oldtxt
+  fi
+
+  /etc/init.d/podkop restart 2>/dev/null || true
+
+  left="$(awk -F '\t' 'NF>=3 {c++} END{print c+0}' "$FILES" 2>/dev/null)"
+  echo "OK: TXT файл удалён: $fname / удалено серверов: $cnt / осталось TXT: $left"
+}
+
+clear_all() {
+  cnt="$(awk -F '\t' 'NF>=3 {c++} END{print c+0}' "$FILES" 2>/dev/null)"
+  rm -f "$FILES" "$OLDTXT" "$PING" "$UPLOAD"
+  clean_servers_json_txt
+  [ -f "$LINKS" ] && grep -vE 'txt-v[0-9]| TXT ' "$LINKS" > "$LINKS.tmp.$$" 2>/dev/null && mv -f "$LINKS.tmp.$$" "$LINKS" || true
+  /etc/init.d/podkop restart 2>/dev/null || true
+  echo "OK: все TXT удалены / удалено серверов: $cnt"
+}
+
+case "${1:-}" in
+  delete-file) shift; delete_file "${1:-}" "${2:-}" ;;
+  clear) clear_all ;;
+  *) echo "Usage: $0 delete-file id name | clear"; exit 1 ;;
+esac

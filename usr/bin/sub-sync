@@ -8,6 +8,9 @@
 REAL="/usr/bin/sub-sync.real"
 # SUBSYNC_DELETE_SUB_PURGE_ACTIVE_SECTIONS_V331_WRAPPER
 case "${1:-}" in
+  txt-v348) shift; exec /usr/bin/sub-sync-txt-v348 "$@" ;; # SUBSYNC_TXT_BLOCK_V348_WRAPPER
+  txt-v346) shift; exec /usr/bin/sub-sync-txt-v346 "$@" ;; # SUBSYNC_TXT_BLOCK_V346_WRAPPER
+  txt-v345) shift; exec /usr/bin/sub-sync-txt-v345 "$@" ;; # SUBSYNC_TXT_BLOCK_V345_WRAPPER
   delete-purge-v331)
     shift
     exec /usr/bin/sub-sync-delete-purge-active-v331 "$@"
