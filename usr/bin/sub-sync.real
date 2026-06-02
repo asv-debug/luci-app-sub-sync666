@@ -120,6 +120,19 @@ section_has_link() {
     printf '%s\n' "$_current" | tr ' ' '\n' | grep -Fxq "$_link"
 }
 
+# SUBSYNC_TCP_REALITY_ONLY_FILTER_V393_REAL_BEGIN
+subsync_tcp_reality_only_v393() {
+    case "$1" in
+        vless://*) : ;;
+        *) return 1 ;;
+    esac
+    printf "%s\n" "$1" | grep -qi "type=tcp" || return 1
+    printf "%s\n" "$1" | grep -qi "security=reality" || return 1
+    printf "%s\n" "$1" | grep -qi "type=xhttp" && return 1
+    return 0
+}
+# SUBSYNC_TCP_REALITY_ONLY_FILTER_V393_REAL_END
+
 cmd_apply() {
     local _target="$1"
     if [ -z "$_target" ]; then
@@ -143,6 +156,7 @@ cmd_apply() {
         url)
             local _first_link=""
             while IFS= read -r _line; do
+                subsync_tcp_reality_only_v393 "$_line" || continue # SUBSYNC_TCP_REALITY_ONLY_FILTER_V393_REAL_APPLY
                 case "$_line" in
                     vless://*|ss://*|trojan://*|hy2://*|hysteria2://*)
                         _first_link="$_line"
@@ -158,6 +172,7 @@ cmd_apply() {
         selector)
             uci -q delete "podkop.${_target}.selector_proxy_links" 2>/dev/null || true
             while IFS= read -r _line; do
+                subsync_tcp_reality_only_v393 "$_line" || continue # SUBSYNC_TCP_REALITY_ONLY_FILTER_V393_REAL_APPLY
                 case "$_line" in
                     vless://*|ss://*|trojan://*|hy2://*|hysteria2://*)
                         uci add_list "podkop.${_target}.selector_proxy_links=${_line}"
@@ -169,6 +184,7 @@ cmd_apply() {
         *)
             uci -q delete "podkop.${_target}.urltest_proxy_links" 2>/dev/null || true
             while IFS= read -r _line; do
+                subsync_tcp_reality_only_v393 "$_line" || continue # SUBSYNC_TCP_REALITY_ONLY_FILTER_V393_REAL_APPLY
                 case "$_line" in
                     vless://*|ss://*|trojan://*|hy2://*|hysteria2://*)
                         uci add_list "podkop.${_target}.urltest_proxy_links=${_line}"
