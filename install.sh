@@ -78,13 +78,13 @@ fi
 EOSAFE
 chmod +x /usr/bin/podcop-sub-v666-safe-podkop-restart
 # SUBSYNC_SAFE_PODKOP_RESTART_INSTALL_V395_END
-# SUBSYNC_PUBLIC_BUILD_V404
-# SUBSYNC_PUBLIC_BUILD_V404
-# SUBSYNC_PUBLIC_BUILD_V404
-# SUBSYNC_PUBLIC_BUILD_V404
-# SUBSYNC_PUBLIC_BUILD_V404
-# SUBSYNC_PUBLIC_BUILD_V404
-# SUBSYNC_PUBLIC_BUILD_V404
+# SUBSYNC_PUBLIC_BUILD_V405
+# SUBSYNC_PUBLIC_BUILD_V405
+# SUBSYNC_PUBLIC_BUILD_V405
+# SUBSYNC_PUBLIC_BUILD_V405
+# SUBSYNC_PUBLIC_BUILD_V405
+# SUBSYNC_PUBLIC_BUILD_V405
+# SUBSYNC_PUBLIC_BUILD_V405
 # SUBSYNC_INSTALL_VERSION_FILES_V395_BEGIN
 set -u
 
@@ -310,8 +310,8 @@ touch /etc/crontabs/root
 /etc/init.d/cron restart 2>/dev/null || true
 
 echo "=== version ==="
-echo "v404" > /etc/sub-sync/module-version
-echo "404" > /etc/sub-sync/module-build
+echo "v405" > /etc/sub-sync/module-version
+echo "405" > /etc/sub-sync/module-build
 
 echo "=== apply Podkop xHTTP patch ==="
 if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
@@ -406,3 +406,24 @@ chmod 755 /www/luci-static/resources/view/podkop 2>/dev/null || true
 chmod 644 /www/luci-static/resources/view/podkop/main.js 2>/dev/null || true
 rm -rf /tmp/luci-* /tmp/luci-indexcache* /tmp/luci-modulecache*
 # SUBSYNC_NATIVE_PODKOP_MAIN_JS_403_FIX_V404_END
+# SUBSYNC_DASHBOARD_HELPERS_FORCE_INSTALL_V405_BEGIN
+echo "Install Podcop Sub v666 dashboard helpers..."
+BASE_URL="${BASE_URL:-https://raw.githubusercontent.com/${REPO_OWNER:-kzolotarev95}/${REPO_NAME:-luci-app-sub-sync666}/${REPO_REF:-main}}"
+mkdir -p /usr/bin /www/luci-static/resources/view/sub_sync /etc/sub-sync
+
+wget -qO /www/luci-static/resources/view/sub_sync/sub_sync_subv666.js "$BASE_URL/htdocs/luci-static/resources/view/sub_sync/sub_sync_subv666.js" 2>/dev/null || true
+for f in sub-sync sub-sync-delete-server sub-sync-dashboard-v403 sub-sync-dashboard-ping-v403; do
+  wget -qO "/usr/bin/$f" "$BASE_URL/usr/bin/$f" 2>/dev/null && chmod +x "/usr/bin/$f"
+done
+
+chmod 755 /www/luci-static/resources/view 2>/dev/null || true
+chmod 755 /www/luci-static/resources/view/podkop 2>/dev/null || true
+chmod 644 /www/luci-static/resources/view/podkop/main.js 2>/dev/null || true
+
+echo "v405" > /etc/sub-sync/module-version
+echo "405" > /etc/sub-sync/module-build
+
+rm -rf /tmp/luci-* /tmp/luci-indexcache* /tmp/luci-modulecache*
+/etc/init.d/rpcd restart 2>/dev/null || true
+/etc/init.d/uhttpd restart 2>/dev/null || true
+# SUBSYNC_DASHBOARD_HELPERS_FORCE_INSTALL_V405_END
