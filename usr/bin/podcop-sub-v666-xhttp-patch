@@ -37,6 +37,10 @@ apply_patch() {
             print "    xhttp|http)"
             print "        local p=$(url_get_query_param \"$url\" path)"
             print "        local h=$(url_get_query_param \"$url\" host)"
+            print "        # SUBSYNC_XHTTP_TRANSPORT_HOST_FALLBACK_LOCAL"
+            print "        if [ -z \"$h\" ]; then"
+            print "            h=$(url_get_host \"$url\")"
+            print "        fi"
             print "        local s=$(url_get_query_param \"$url\" sni)"
             print "        local m=$(url_get_query_param \"$url\" mode)"
             print "        local xp=$(url_get_query_param \"$url\" x_padding_bytes)"
@@ -56,9 +60,20 @@ apply_patch() {
         in_func && /alpn=\$\(comma_string_to_json_array/ {
             print
             print "        local transport_type=$(url_get_query_param \"$url\" type)"
-            print "        if [ \"$alpn\" = \"[]\" ] && [ \"$transport_type\" = \"xhttp\" ] && [ \"${SUBSYNC_XHTTP_FORCE_ALPN:-0}\" = \"1\" ]; then"
-            print "            alpn='\''[\"h2\",\"http/1.1\"]'\''"
-            print "        fi"
+            print "        # SUBSYNC_XHTTP_TLS_ALPN_SNI_FIX_LOCAL"
+            print "        case \"$transport_type\" in"
+            print "        xhttp|http)"
+            print "            if [ -z \"$sni\" ]; then"
+            print "                sni=$(url_get_query_param \"$url\" \"host\")"
+            print "            fi"
+            print "            if [ -z \"$sni\" ]; then"
+            print "                sni=$(url_get_host \"$url\")"
+            print "            fi"
+            print "            if [ \"$alpn\" = \"[]\" ]; then"
+            print "                alpn='\''[\"h2\",\"http/1.1\"]'\''"
+            print "            fi"
+            print "            ;;"
+            print "        esac"
             next
         }
         in_func && /^}/ { in_func=0 }
@@ -84,7 +99,7 @@ sing_box_cm_set_xhttp_transport() {
     [ -z "$path" ] && path="/"
     [ -z "$host" ] && host="$sni"
     [ -z "$mode" ] && mode="auto"
-    [ -z "$x_padding_bytes" ] && x_padding_bytes="1-1"
+    [ -z "$x_padding_bytes" ] && x_padding_bytes="100-1000"
 
     local no_grpc_header=""
     local sc_max_each_post_bytes=""
