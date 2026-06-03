@@ -26,8 +26,8 @@ case "$CMD" in
     apply_xhttp_patch
 
     if ! has_outbound; then
-      logger -t podcop-sub-v666 "v401: skip podkop $CMD, no outbound configured yet"
-      echo "podcop-sub-v666 v401: skip podkop $CMD, no outbound configured yet"
+      logger -t podcop-sub-v666 "v402: skip podkop $CMD, no outbound configured yet"
+      echo "podcop-sub-v666 v402: skip podkop $CMD, no outbound configured yet"
 
       # Чисто остановить старый Podkop, но НЕ запускать без outbound.
       "$ORIG" stop >/dev/null 2>&1 || true
@@ -68,7 +68,7 @@ if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
 fi
 
 if ! has_outbound; then
-  logger -t podcop-sub-v666 "v401: skip podkop restart, no outbound configured yet"
+  logger -t podcop-sub-v666 "v402: skip podkop restart, no outbound configured yet"
   /etc/init.d/podkop stop >/dev/null 2>&1 || true
   echo "SKIP_PODKOP_RESTART_NO_OUTBOUND"
   exit 0
@@ -94,10 +94,10 @@ REPO_REF="${REPO_REF:-main}"
 RAW_BASE="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_REF}"
 
 echo "========================================="
-echo "  Podcop Sub v666 — public install v401"
+echo "  Podcop Sub v666 — public install v402"
 echo "========================================="
 echo "Backup: disabled for public/friend install"
-echo "Downloader: wget strict direct installer v401"
+echo "Downloader: wget strict direct installer v402"
 
 dl() {
   rel="$1"
@@ -201,7 +201,7 @@ patch_js_hide_check /www/luci-static/resources/view/sub_sync/sub_sync_subv666.js
 echo "=== install ACL ==="
 
 # SUBSYNC_FIX_JS_403_PERMS_V359_BEGIN
-echo "=== fix LuCI static JS permissions v401 ==="
+echo "=== fix LuCI static JS permissions v402 ==="
 chown -R root:root /www/luci-static/resources/view/sub_sync 2>/dev/null || true
 chmod 755 /www /www/luci-static /www/luci-static/resources /www/luci-static/resources/view /www/luci-static/resources/view/sub_sync 2>/dev/null || true
 chmod 644 /www/luci-static/resources/view/sub_sync/*.js 2>/dev/null || true
@@ -258,7 +258,6 @@ START=99
 USE_PROCD=1
 start_service() {
   [ -x /usr/bin/podcop-sub-v666-guard ] || exit 0
-  /usr/bin/podcop-sub-v666-guard >/tmp/podcop-sub-v666-guard.log 2>&1 || true
 }
 INIT
   chmod 755 /etc/init.d/podcop-sub-v666-guard
@@ -271,7 +270,7 @@ echo "=== integrate Podcop Sub v666 as separate Services menu item ==="
 
 rm -f /usr/share/luci/menu.d/luci-app-sub-sync.json 2>/dev/null || true
 
-# If old v401 hijacked native Podkop menu, restore native route when native Podkop view exists.
+# If old v402 hijacked native Podkop menu, restore native route when native Podkop view exists.
 if grep -q 'sub_sync/' /usr/share/luci/menu.d/luci-app-podkop.json 2>/dev/null && [ -s /www/luci-static/resources/view/podkop/podkop.js ]; then
 cat > /usr/share/luci/menu.d/luci-app-podkop.json <<'MENU'
 {
@@ -308,15 +307,11 @@ cat > /usr/share/luci/menu.d/luci-app-podcop-sub-v666.json <<'MENU'
 MENU
 echo "=== cron guard ==="
 touch /etc/crontabs/root
-grep -v '/usr/bin/podcop-sub-v666-guard' /etc/crontabs/root > /tmp/root.cron.v401 2>/dev/null || true
-echo '*/5 * * * * /usr/bin/podcop-sub-v666-guard >/tmp/podcop-sub-v666-guard.log 2>&1' >> /tmp/root.cron.v401
-cat /tmp/root.cron.v401 > /etc/crontabs/root
-rm -f /tmp/root.cron.v401
 /etc/init.d/cron restart 2>/dev/null || true
 
 echo "=== version ==="
-echo "v401" > /etc/sub-sync/module-version
-echo "401" > /etc/sub-sync/module-build
+echo "v402" > /etc/sub-sync/module-version
+echo "402" > /etc/sub-sync/module-build
 
 echo "=== apply Podkop xHTTP patch ==="
 if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
@@ -377,7 +372,7 @@ rm -rf /tmp/luci-modulecache /tmp/luci-modulecache/* /tmp/luci-indexcache /tmp/l
 /etc/init.d/rpcd restart 2>/dev/null || true
 /etc/init.d/uhttpd restart 2>/dev/null || true
 
-echo "=== remove podcop-sub-v666 guard runtime v401 ==="
+echo "=== remove podcop-sub-v666 guard runtime v402 ==="
 # SUBSYNC_REMOVE_GUARD_RUNTIME_V401
 /etc/init.d/podcop-sub-v666-guard disable 2>/dev/null || true
 /etc/init.d/podcop-sub-v666-guard stop 2>/dev/null || true
@@ -386,9 +381,9 @@ grep -v /usr/bin/podcop-sub-v666-guard /etc/crontabs/root > /tmp/root.cron.nogua
 rm -f /tmp/root.cron.noguard
 rm -f /usr/bin/podcop-sub-v666-guard /etc/init.d/podcop-sub-v666-guard 2>/dev/null || true
 /etc/init.d/cron restart 2>/dev/null || true
-echo "DONE_MODULE_OK: Podcop Sub v666 v401 module installed."
+echo "DONE_MODULE_OK: Podcop Sub v666 v402 module installed."
 echo "DONE_THEME_STATUS: mediaurlbase=$(uci get luci.main.mediaurlbase 2>/dev/null || true)"
-echo "DONE: install.sh v401 finished rc=0"
+echo "DONE: install.sh v402 finished rc=0"
 # SUBSYNC_INSTALL_VERSION_FILES_V395_END
 
 # SUBSYNC_INSTALL_DELETE_PURGE_HELPER_V332_BEGIN
