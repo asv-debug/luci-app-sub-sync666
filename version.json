@@ -1,6 +1,1 @@
-{
-  "version": "v397",
-  "build": 397,
-  "name": "Podcop Sub v666",
-  "notes": "Outbounds diagnostics smart-pass: working sections show latency, broken sections are skipped without hanging"
-}
+{ "version": "v399", "build": 399 }

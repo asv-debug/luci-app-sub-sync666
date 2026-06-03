@@ -1480,6 +1480,8 @@
   window.__SUBSYNC_REMOVE_AUTOPICK_BLOCK_ONLY_V323 = true;
 
   function removeAutopickBlockOnlyV323() {
+    /* SUBSYNC_RESTORE_AUTOPICK_V398J: keep Автоподбор visible */
+    return;
     try {
       var cards = document.querySelectorAll('div.ss-card');
       for (var i = 0; i < cards.length; i++) {
@@ -6620,12 +6622,25 @@ if (typeof window !== "undefined") window.setTimeout(function() { try { ssHydrat
   }
 }
                            `),
-				donateBannerV257, moduleUpdateCardV338, manualCardV53B, widgetsRow, sysWidgetsRowV96, wServerCard, sectionCreateCardV45B, subsCard, xhttpCard, autoPickCard, serversCard, 
+				donateBannerV257, moduleUpdateCardV338, manualCardV53B, widgetsRow, sysWidgetsRowV96, wServerCard, sectionCreateCardV45B, subsCard, xhttpCard, serversCard, autoPickCard, 
 				E('div', { 'style': 'text-align:right;margin-top:8px' }, [
                                         E('span', { 'class': 'ss-version ss-version-hidden-v90', 'style': 'display:none!important' }, '')
 				])
 			]);
 
+                        /* SUBSYNC_CRON_TIME_LOAD_UI_V398Q */
+                        window.setTimeout(function(){
+                          try {
+                            fs.exec("/usr/bin/sub-sync-autoadd", ["cron-get"]).then(function(r){
+                              try {
+                                var out = String((r && (r.stdout || r.stderr)) || "").trim();
+                                var cfg = JSON.parse(out || "{}");
+                                var inp = document.getElementById("subsync-cron-time-v32");
+                                if (inp && cfg.time) inp.value = cfg.time;
+                              } catch(e) {}
+                            });
+                          } catch(e) {}
+                        }, 500);
 			return ssPage;
 
 		}).catch(function(err) {

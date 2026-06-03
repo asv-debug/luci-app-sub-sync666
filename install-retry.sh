@@ -20,7 +20,7 @@ if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
 fi
 
 if ! has_outbound; then
-  logger -t podcop-sub-v666 "v395: skip podkop restart, no outbound configured yet"
+  logger -t podcop-sub-v666 "v399: skip podkop restart, no outbound configured yet"
   /etc/init.d/podkop stop >/dev/null 2>&1 || true
   echo "SKIP_PODKOP_RESTART_NO_OUTBOUND"
   exit 0
@@ -36,10 +36,10 @@ REPO_OWNER="${REPO_OWNER:-kzolotarev95}"
 REPO_NAME="${REPO_NAME:-luci-app-sub-sync666}"
 REPO_REF="${REPO_REF:-main}"
 BASE_URL="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$REPO_REF"
-TMP="/tmp/subsync-install-v395.sh"
+TMP="/tmp/subsync-install-v399.sh"
 
 echo "========================================="
-echo " Podcop Sub v666 retry installer v395"
+echo " Podcop Sub v666 retry installer v399"
 echo "========================================="
 
 i=1
@@ -48,15 +48,15 @@ while [ "$i" -le 10 ]; do
   wget -O "$TMP" "$BASE_URL/install.sh?v=$(date +%s)-$i" || true
 
   if [ -s "$TMP" ] && grep -q 'SUBSYNC_PUBLIC_BUILD_V397' "$TMP" && sh -n "$TMP"; then
-    echo "OK: install.sh v395 downloaded and verified"
+    echo "OK: install.sh v399 downloaded and verified"
     sh "$TMP"
     exit $?
   fi
 
-  echo "WARN: downloaded install.sh is not verified v395"
+  echo "WARN: downloaded install.sh is not verified v399"
   i=$((i + 1))
   sleep 3
 done
 
-echo "ERROR: cannot download verified install.sh v395"
+echo "ERROR: cannot download verified install.sh v399"
 exit 1

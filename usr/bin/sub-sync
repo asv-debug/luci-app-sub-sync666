@@ -65,6 +65,10 @@ rebuild_servers_cache() {
     echo '[]' > /etc/sub-sync/servers.json
   fi
 
+  # SUBSYNC_AUTOLOGIC_AFTER_SYNC_HOOK_V398P
+  if [ "$rc" = "0" ] && [ -x /usr/bin/sub-sync-autoadd ]; then
+    /usr/bin/sub-sync-autoadd autologic-run 2>&1 || true
+  fi
   return "$rc"
 }
 

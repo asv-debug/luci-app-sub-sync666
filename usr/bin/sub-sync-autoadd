@@ -53,6 +53,63 @@ if [ "${1:-}" = "cron-set" ]; then
     printf '{"ok":1,"time":"%s"}\n' "$TIME"
     exit 0
 fi
+# SUBSYNC_AUTOLOGIC_CONFIG_FIX_V398O_BEGIN
+CFG="/etc/sub-sync/autologic.conf"
+
+cfg_get() {
+    key="$1"
+    def="$2"
+    val="$(grep -E "^${key}=" "$CFG" 2>/dev/null | tail -n 1 | cut -d= -f2-)"
+    [ -n "$val" ] || val="$def"
+    printf '%s' "$val"
+}
+
+if [ "${1:-}" = "config-get" ]; then
+    mkdir -p /etc/sub-sync
+    printf '{"enabled":"%s","section":"%s","oldMode":"%s","limit":"%s","usePing":"%s","maxPing":"%s","useTransport":"%s","transport":"%s","useProto":"%s","proto":"%s","useCountry":"%s","country":"%s"}\n' \
+      "$(cfg_get enabled 0)" "$(cfg_get section '')" "$(cfg_get oldMode replace)" "$(cfg_get limit 60)" "$(cfg_get usePing 1)" "$(cfg_get maxPing 700)" "$(cfg_get useTransport 0)" "$(cfg_get transport 'xhttp,ws,tcp,grpc,quic')" "$(cfg_get useProto 0)" "$(cfg_get proto 'vless,trojan,ss,hy2')" "$(cfg_get useCountry 0)" "$(cfg_get country '')"
+    exit 0
+fi
+
+if [ "${1:-}" = "config-set" ]; then
+    mkdir -p /etc/sub-sync
+
+    enabled="${2:-0}"
+    section="${3:-}"
+    oldMode="${4:-replace}"
+    limit="${5:-60}"
+    usePing="${6:-1}"
+    maxPing="${7:-700}"
+    useTransport="${8:-0}"
+    transport="${9:-xhttp,ws,tcp,grpc,quic}"
+
+    shift 9
+    useProto="${1:-0}"
+    proto="${2:-vless,trojan,ss,hy2}"
+    useCountry="${3:-0}"
+    country_raw="${4:-}"
+    country_norm="$(printf '%s' "$country_raw" | sed 's/[[:space:]]//g')"
+
+    {
+      echo "enabled=$enabled"
+      echo "section=$section"
+      echo "oldMode=$oldMode"
+      echo "limit=$limit"
+      echo "usePing=$usePing"
+      echo "maxPing=$maxPing"
+      echo "useTransport=$useTransport"
+      echo "transport=$transport"
+      echo "useProto=$useProto"
+      echo "proto=$proto"
+      echo "useCountry=$useCountry"
+      echo "country=$country_norm"
+    } > "$CFG"
+
+    logger -t sub-sync-autoadd "Autologic config saved"
+    printf '{"ok":1}\n'
+    exit 0
+fi
+# SUBSYNC_AUTOLOGIC_CONFIG_FIX_V398O_END
 # SUBSYNC_AUTOADD_APPLY_IDS_V13
 
 REAL="/usr/bin/sub-sync-autoadd.real-v10"
@@ -123,6 +180,46 @@ apply_ids() {
     echo "OK: applied $added"
 }
 
+# SUBSYNC_AUTOLOGIC_RUN_CMD_V398P_BEGIN
+if [ "${1:-}" = "autologic-run" ]; then
+    enabled="$(cfg_get enabled 0)"
+    [ "$enabled" = "1" ] || { logger -t sub-sync-autoadd "AutoPick: disabled"; exit 0; }
+
+    section="$(cfg_get section '')"
+    oldMode="$(cfg_get oldMode replace)"
+    limit="$(cfg_get limit 60)"
+    useCountry="$(cfg_get useCountry 0)"
+    country="$(cfg_get country '')"
+    useProto="$(cfg_get useProto 0)"
+    proto="$(cfg_get proto 'vless,trojan,ss,hy2')"
+    useTransport="$(cfg_get useTransport 0)"
+    transport="$(cfg_get transport 'xhttp,ws,tcp,grpc,quic')"
+
+    [ -n "$section" ] || { logger -t sub-sync-autoadd "AutoPick: no section"; exit 0; }
+    case "$limit" in ''|*[!0-9]*) limit=60 ;; esac
+
+    if command -v jq >/dev/null 2>&1 && [ -s /etc/sub-sync/servers.json ]; then
+        ids="$(jq -r --arg uc "$useCountry" --arg c "$country" --arg up "$useProto" --arg p "$proto" --arg ut "$useTransport" --arg t "$transport" '
+          def txt($v): (($v.name//"") + " " + ($v.host//"") + " " + ($v.address//"") + " " + ($v.server//"") + " " + ($v.link//"")) | ascii_downcase;
+          to_entries[] as $e
+          | ($e.value.proto//"" | ascii_downcase) as $pr
+          | (txt($e.value)) as $hay
+          | select($up!="1" or (($p|ascii_downcase|split(",")) | index($pr)) != null)
+          | select($uc!="1" or (($c|ascii_downcase|split(",")|map(select(length>0))) as $cs | (($cs|length)==0 or any($cs[]; $hay|contains(.)))))
+          | select($ut!="1" or (($t|ascii_downcase|split(",")|map(select(length>0))) as $ts | (($ts|length)==0 or any($ts[]; $hay|contains(.)))))
+          | ($e.key + 1)
+        ' /etc/sub-sync/servers.json | head -n "$limit")"
+    else
+        ids="$(awk 'NF{print NR}' /etc/sub-sync/links.txt 2>/dev/null | head -n "$limit")"
+    fi
+
+    [ -n "$ids" ] || { logger -t sub-sync-autoadd "AutoPick: no matching servers"; exit 0; }
+
+    set -- $ids
+    apply_ids "$section" "$oldMode" "$@"
+    exit "$?"
+fi
+# SUBSYNC_AUTOLOGIC_RUN_CMD_V398P_END
 case "${1:-}" in
     apply-ids)
         shift
