@@ -26,8 +26,8 @@ case "$CMD" in
     apply_xhttp_patch
 
     if ! has_outbound; then
-      logger -t podcop-sub-v666 "v399: skip podkop $CMD, no outbound configured yet"
-      echo "podcop-sub-v666 v399: skip podkop $CMD, no outbound configured yet"
+      logger -t podcop-sub-v666 "v400: skip podkop $CMD, no outbound configured yet"
+      echo "podcop-sub-v666 v400: skip podkop $CMD, no outbound configured yet"
 
       # Чисто остановить старый Podkop, но НЕ запускать без outbound.
       "$ORIG" stop >/dev/null 2>&1 || true
@@ -68,7 +68,7 @@ if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
 fi
 
 if ! has_outbound; then
-  logger -t podcop-sub-v666 "v399: skip podkop restart, no outbound configured yet"
+  logger -t podcop-sub-v666 "v400: skip podkop restart, no outbound configured yet"
   /etc/init.d/podkop stop >/dev/null 2>&1 || true
   echo "SKIP_PODKOP_RESTART_NO_OUTBOUND"
   exit 0
@@ -94,10 +94,10 @@ REPO_REF="${REPO_REF:-main}"
 RAW_BASE="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_REF}"
 
 echo "========================================="
-echo "  Podcop Sub v666 — public install v399"
+echo "  Podcop Sub v666 — public install v400"
 echo "========================================="
 echo "Backup: disabled for public/friend install"
-echo "Downloader: wget strict direct installer v399"
+echo "Downloader: wget strict direct installer v400"
 
 dl() {
   rel="$1"
@@ -199,7 +199,7 @@ patch_js_hide_check /www/luci-static/resources/view/sub_sync/sub_sync_v221.js
 echo "=== install ACL ==="
 
 # SUBSYNC_FIX_JS_403_PERMS_V359_BEGIN
-echo "=== fix LuCI static JS permissions v399 ==="
+echo "=== fix LuCI static JS permissions v400 ==="
 chown -R root:root /www/luci-static/resources/view/sub_sync 2>/dev/null || true
 chmod 755 /www /www/luci-static /www/luci-static/resources /www/luci-static/resources/view /www/luci-static/resources/view/sub_sync 2>/dev/null || true
 chmod 644 /www/luci-static/resources/view/sub_sync/*.js 2>/dev/null || true
@@ -265,11 +265,12 @@ fi
 echo "=== public donor state ==="
 dl "etc/sub-sync/donaters.tsv" "/etc/sub-sync/donaters.tsv" || true
 
-echo "=== integrate into Services -> Podkop ==="
+echo "=== integrate Podcop Sub v666 as separate Services menu item ==="
+
 rm -f /usr/share/luci/menu.d/luci-app-sub-sync.json 2>/dev/null || true
 
-cp -f /usr/share/luci/menu.d/luci-app-podkop.json /etc/sub-sync/luci-app-podkop.json.before-podcop-sub-v666 2>/dev/null || true
-
+# If old v400 hijacked native Podkop menu, restore native route when native Podkop view exists.
+if grep -q 'sub_sync/sub_sync_v221' /usr/share/luci/menu.d/luci-app-podkop.json 2>/dev/null && [ -s /www/luci-static/resources/view/podkop/podkop.js ]; then
 cat > /usr/share/luci/menu.d/luci-app-podkop.json <<'MENU'
 {
   "admin/services/podkop": {
@@ -277,27 +278,43 @@ cat > /usr/share/luci/menu.d/luci-app-podkop.json <<'MENU'
     "order": 60,
     "action": {
       "type": "view",
-      "path": "sub_sync/sub_sync_v221"
+      "path": "podkop/podkop"
     },
     "depends": {
-      "acl": [ "luci-app-podkop", "luci-app-sub-sync" ],
+      "acl": [ "luci-app-podkop" ],
       "uci": { "podkop": true }
     }
   }
 }
 MENU
+fi
 
+cat > /usr/share/luci/menu.d/luci-app-podcop-sub-v666.json <<'MENU'
+{
+  "admin/services/podcop-sub-v666": {
+    "title": "Podcop Sub v666",
+    "order": 61,
+    "action": {
+      "type": "view",
+      "path": "sub_sync/sub_sync_v221"
+    },
+    "depends": {
+      "acl": [ "luci-app-sub-sync" ]
+    }
+  }
+}
+MENU
 echo "=== cron guard ==="
 touch /etc/crontabs/root
-grep -v '/usr/bin/podcop-sub-v666-guard' /etc/crontabs/root > /tmp/root.cron.v399 2>/dev/null || true
-echo '*/5 * * * * /usr/bin/podcop-sub-v666-guard >/tmp/podcop-sub-v666-guard.log 2>&1' >> /tmp/root.cron.v399
-cat /tmp/root.cron.v399 > /etc/crontabs/root
-rm -f /tmp/root.cron.v399
+grep -v '/usr/bin/podcop-sub-v666-guard' /etc/crontabs/root > /tmp/root.cron.v400 2>/dev/null || true
+echo '*/5 * * * * /usr/bin/podcop-sub-v666-guard >/tmp/podcop-sub-v666-guard.log 2>&1' >> /tmp/root.cron.v400
+cat /tmp/root.cron.v400 > /etc/crontabs/root
+rm -f /tmp/root.cron.v400
 /etc/init.d/cron restart 2>/dev/null || true
 
 echo "=== version ==="
-echo "v399" > /etc/sub-sync/module-version
-echo "399" > /etc/sub-sync/module-build
+echo "v400" > /etc/sub-sync/module-version
+echo "400" > /etc/sub-sync/module-build
 
 echo "=== apply Podkop xHTTP patch ==="
 if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
@@ -327,7 +344,9 @@ echo "=== final verify ==="
 [ -s /www/luci-static/resources/view/sub_sync/sub_sync_v221.js ] || { echo "ERROR: sub_sync_v221.js missing"; exit 1; }
 [ -s /usr/share/rpcd/acl.d/luci-app-sub-sync.json ] || { echo "ERROR: ACL missing"; exit 1; }
 grep -q 'luci-app-sub-sync' /usr/share/rpcd/acl.d/luci-app-sub-sync.json || { echo "ERROR: ACL marker missing"; exit 1; }
-grep -q 'sub_sync/sub_sync_v221' /usr/share/luci/menu.d/luci-app-podkop.json || { echo "ERROR: menu missing"; exit 1; }
+[ -s /usr/share/luci/menu.d/luci-app-podcop-sub-v666.json ] || { echo "ERROR: Sub v666 menu missing"; exit 1; }
+grep -q 'sub_sync/sub_sync_v221' /usr/share/luci/menu.d/luci-app-podcop-sub-v666.json || { echo "ERROR: Sub v666 route missing"; exit 1; }
+if grep -q 'sub_sync/sub_sync_v221' /usr/share/luci/menu.d/luci-app-podkop.json 2>/dev/null; then echo "ERROR: native Podkop menu hijacked"; exit 1; fi
 grep -q 'SUBSYNC_HIDE_UPDATE_CHECK_BUTTON_V269B' /www/luci-static/resources/view/sub_sync/sub_sync.js || { echo "ERROR: hide marker missing in sub_sync.js"; exit 1; }
 
 echo "--- files ---"
@@ -354,9 +373,9 @@ rm -rf /tmp/luci-modulecache /tmp/luci-modulecache/* /tmp/luci-indexcache /tmp/l
 /etc/init.d/rpcd restart 2>/dev/null || true
 /etc/init.d/uhttpd restart 2>/dev/null || true
 
-echo "DONE_MODULE_OK: Podcop Sub v666 v399 module installed."
+echo "DONE_MODULE_OK: Podcop Sub v666 v400 module installed."
 echo "DONE_THEME_STATUS: mediaurlbase=$(uci get luci.main.mediaurlbase 2>/dev/null || true)"
-echo "DONE: install.sh v399 finished rc=0"
+echo "DONE: install.sh v400 finished rc=0"
 # SUBSYNC_INSTALL_VERSION_FILES_V395_END
 
 # SUBSYNC_INSTALL_DELETE_PURGE_HELPER_V332_BEGIN
