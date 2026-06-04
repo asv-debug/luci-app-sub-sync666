@@ -1,4 +1,5 @@
 #!/bin/sh
+# SUBSYNC_PUBLIC_BUILD_V435
 # SUBSYNC_PUBLIC_BUILD_V434
 # SUBSYNC_SAFE_PODKOP_RESTART_INSTALL_V395_BEGIN
 cat > /usr/bin/podcop-sub-v666-safe-podkop <<'EOSAFE_MAIN'
@@ -311,8 +312,24 @@ touch /etc/crontabs/root
 /etc/init.d/cron restart 2>/dev/null || true
 
 echo "=== version ==="
-echo "v434" > /etc/sub-sync/module-version
-echo "434" > /etc/sub-sync/module-build
+# SUBSYNC_INSTALL_SOURCE_DELETE_HELPERS_V435_BEGIN
+SUBSYNC_RAW_BASE_V435="https://raw.githubusercontent.com/${REPO_OWNER:-kzolotarev95}/${REPO_NAME:-luci-app-sub-sync666}/${REPO_REF:-main}"
+subsync_dl_helper_v435() {
+  _name="$1"
+  _dst="/usr/bin/$_name"
+  _url="$SUBSYNC_RAW_BASE_V435/usr/bin/$_name?v=$(date +%s)"
+  echo "install helper $_name"
+  wget -qO "$_dst" "$_url" 2>/dev/null || curl -fsSL "$_url" -o "$_dst" 2>/dev/null || {
+    echo "ERROR: failed to download $_name"
+    exit 1
+  }
+  chmod +x "$_dst"
+}
+subsync_dl_helper_v435 sub-sync-link-source-map-v432c
+subsync_dl_helper_v435 sub-sync-del-sub-source-clean-v432c
+# SUBSYNC_INSTALL_SOURCE_DELETE_HELPERS_V435_END
+echo "v435" > /etc/sub-sync/module-version
+echo "435" > /etc/sub-sync/module-build
 
 echo "=== apply Podkop xHTTP patch ==="
 if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
@@ -421,8 +438,8 @@ chmod 755 /www/luci-static/resources/view 2>/dev/null || true
 chmod 755 /www/luci-static/resources/view/podkop 2>/dev/null || true
 chmod 644 /www/luci-static/resources/view/podkop/main.js 2>/dev/null || true
 
-echo "v434" > /etc/sub-sync/module-version
-echo "434" > /etc/sub-sync/module-build
+echo "v435" > /etc/sub-sync/module-version
+echo "435" > /etc/sub-sync/module-build
 
 rm -rf /tmp/luci-* /tmp/luci-indexcache* /tmp/luci-modulecache*
 /etc/init.d/rpcd restart 2>/dev/null || true
