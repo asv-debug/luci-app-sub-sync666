@@ -4229,15 +4229,18 @@ var isAct = ssLinkInListV28(rowLink, curLinks);
 				var sname = (s.name || '').trim();
 				if (!sname) sname = s.addr || '—';
 				var isXhttp = (s.type || '').toLowerCase() === 'xhttp' || (s.type || '').toLowerCase() === 'splithttp';
-				var xhttpNoSupport = isXhttp && !hasXhttp;
+				var xhttpNoSupport = false; /* SUBSYNC_XHTTP_MANUAL_URLTEST_SELECT_V451D */
 
 				var selectBtn = E('button', {
 					'class': 'cbi-button cbi-button-action',
 					'style': 'padding:2px 6px;font-size:11px;min-width:62px',
                                                 'data-link': ssNormLinkV28(s.link || ''),
+                                                'data-urltest': isXhttp ? '1' : '0',
+                                                'data-xhttp': isXhttp ? '1' : '0',
 					'click': function(ev) {
 						var btn = ev.currentTarget || ev.target;
                             var btnXhttpUrlTest = btn.dataset.urltest === '1';
+                                                if (isXhttp) btnXhttpUrlTest = true; /* SUBSYNC_XHTTP_MANUAL_URLTEST_SELECT_V451D_FORCE */
 						if (btn.disabled) return;
                             var sec3 = btnXhttpUrlTest && xhttpSectionSelect ? xhttpSectionSelect.value : globalSectionSelect.value;
 						if (!sec3) { ui.addNotification(null, E('p', {}, 'Выберите секцию'), 'danger'); return; }
@@ -4359,6 +4362,15 @@ if (!ssLinkInListV28(link2, myLinks)) {
 
 
                                 /* SUBSYNC_SECTION_ACTIVE_STRICT_CREATE_V440: disabled old any-section active union */
+                           if (isXhttp) {
+                                   selectBtn.disabled = false;
+                                   selectBtn.dataset.urltest = '1';
+                                   selectBtn.dataset.xhttp = '1';
+                                   selectBtn.className = 'cbi-button cbi-button-action';
+                                   selectBtn.style.cssText = 'padding:2px 6px;font-size:11px;min-width:62px';
+                                   selectBtn.title = 'xHTTP будет выбран в URL Test';
+                                   if (selectBtn.textContent === 'xHTTP ⚠️') selectBtn.textContent = 'Выбрать';
+                           }
 				if (isActive && !xhttpNoSupport) {
 					markBtnSelected(selectBtn, s.link || '');
 				}
