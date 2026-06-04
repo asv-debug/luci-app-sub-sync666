@@ -1,62 +1,35 @@
 #!/bin/sh
-# SUBSYNC_INSTALL_RETRY_ACCEPT_PUBLIC_BUILD_V449
-# SUBSYNC_SAFE_PODKOP_RESTART_INSTALL_V395_BEGIN
-cat > /usr/bin/podcop-sub-v666-safe-podkop-restart <<'EOSAFE'
-#!/bin/sh
-# SUBSYNC_SAFE_PODKOP_RESTART_V395
-set -u
-
-has_outbound() {
-  for S in $(uci show podkop 2>/dev/null | sed -n 's/^podkop\.\([^.=]*\)=section.*/\1/p'); do
-    for O in proxy_string selector_proxy_links urltest_proxy_links outbound_json interface; do
-      V="$(uci -q get podkop.$S.$O 2>/dev/null || true)"
-      [ -n "$V" ] && return 0
-    done
-  done
-  return 1
-}
-
-if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
-  /usr/bin/podcop-sub-v666-xhttp-patch apply >/dev/null 2>&1 || true
-fi
-
-if ! has_outbound; then
-  logger -t podcop-sub-v666 "v402: skip podkop restart, no outbound configured yet"
-  /etc/init.d/podkop stop >/dev/null 2>&1 || true
-  echo "SKIP_PODKOP_RESTART_NO_OUTBOUND"
-  exit 0
-fi
-
-/etc/init.d/podkop restart
-EOSAFE
-chmod +x /usr/bin/podcop-sub-v666-safe-podkop-restart
-# SUBSYNC_SAFE_PODKOP_RESTART_INSTALL_V395_END
+# SUBSYNC_INSTALL_RETRY_ACCEPT_ANY_PUBLIC_BUILD_V450
 set -u
 
 REPO_OWNER="${REPO_OWNER:-kzolotarev95}"
 REPO_NAME="${REPO_NAME:-luci-app-sub-sync666}"
 REPO_REF="${REPO_REF:-main}"
-BASE_URL="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$REPO_REF"
-TMP="/tmp/subsync-install-v402.sh"
+BASE="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$REPO_REF"
+TMP="/tmp/subsync-install-current.sh"
+TRIES=10
 
 echo "========================================="
-echo " Podcop Sub v666 retry installer v449"
+echo " Podcop Sub v666 retry installer v450"
 echo "========================================="
 
 i=1
-while [ "$i" -le 10 ]; do
-  echo "--- install download try $i from $BASE_URL ---"
-  wget -O "$TMP" "$BASE_URL/install.sh?v=$(date +%s)-$i" || true
+while [ "$i" -le "$TRIES" ]; do
+  URL="$BASE/install.sh?v=$(date +%s)-$i"
+  echo "--- install download try $i from $BASE ---"
+  rm -f "$TMP"
 
-  if [ -s "$TMP" ] && grep -q 'SUBSYNC_PUBLIC_BUILD_V406' "$TMP" && sh -n "$TMP"; then
-    echo "OK: install.sh v402 downloaded and verified"
+  wget -q -O "$TMP" "$URL" 2>/dev/null || uclient-fetch -q -O "$TMP" "$URL" 2>/dev/null || true
+
+  if [ -s "$TMP" ] && grep -q 'SUBSYNC_PUBLIC_BUILD_V[0-9]' "$TMP" && sh -n "$TMP"; then
+    echo "OK: install.sh public build downloaded and verified"
     sh "$TMP"
     exit $?
   fi
 
-  echo "WARN: downloaded install.sh is not verified public build marker"
-  i=$((i + 1))
+  echo "WARN: downloaded install.sh is not verified public build"
   sleep 3
+  i=$((i + 1))
 done
 
 echo "ERROR: cannot download verified install.sh public build"

@@ -1,6 +1,6 @@
 #!/bin/sh
-# SUBSYNC_PUBLIC_BUILD_V449
-# SUBSYNC_PUBLIC_BUILD_V449
+# SUBSYNC_PUBLIC_BUILD_V450
+# SUBSYNC_PUBLIC_BUILD_V450
 # SUBSYNC_SAFE_PODKOP_RESTART_INSTALL_V395_BEGIN
 cat > /usr/bin/podcop-sub-v666-safe-podkop <<'EOSAFE_MAIN'
 #!/bin/sh
@@ -80,13 +80,13 @@ fi
 EOSAFE
 chmod +x /usr/bin/podcop-sub-v666-safe-podkop-restart
 # SUBSYNC_SAFE_PODKOP_RESTART_INSTALL_V395_END
-# SUBSYNC_PUBLIC_BUILD_V449
-# SUBSYNC_PUBLIC_BUILD_V449
-# SUBSYNC_PUBLIC_BUILD_V449
-# SUBSYNC_PUBLIC_BUILD_V449
-# SUBSYNC_PUBLIC_BUILD_V449
-# SUBSYNC_PUBLIC_BUILD_V449
-# SUBSYNC_PUBLIC_BUILD_V449
+# SUBSYNC_PUBLIC_BUILD_V450
+# SUBSYNC_PUBLIC_BUILD_V450
+# SUBSYNC_PUBLIC_BUILD_V450
+# SUBSYNC_PUBLIC_BUILD_V450
+# SUBSYNC_PUBLIC_BUILD_V450
+# SUBSYNC_PUBLIC_BUILD_V450
+# SUBSYNC_PUBLIC_BUILD_V450
 # SUBSYNC_INSTALL_VERSION_FILES_V395_BEGIN
 set -u
 
@@ -351,8 +351,8 @@ subsync_install_helper_v448 usr/bin/sub-sync-delete-server /usr/bin/sub-sync-del
 chmod +x /usr/bin/sub-sync /usr/bin/sub-sync-subs-info /usr/bin/sub-sync-subs-info.real-v444 /usr/bin/sub-sync-dashboard-v403 /usr/bin/sub-sync-dashboard-ping-v403 /usr/bin/sub-sync-delete-server 2>/dev/null || true
 # SUBSYNC_INSTALL_DASHBOARD_FIX_HELPERS_V448_END
 
-echo "v449" > /etc/sub-sync/module-version
-echo "449" > /etc/sub-sync/module-build
+echo "v450" > /etc/sub-sync/module-version
+echo "450" > /etc/sub-sync/module-build
 
 echo "=== apply Podkop xHTTP patch ==="
 if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
@@ -461,8 +461,8 @@ chmod 755 /www/luci-static/resources/view 2>/dev/null || true
 chmod 755 /www/luci-static/resources/view/podkop 2>/dev/null || true
 chmod 644 /www/luci-static/resources/view/podkop/main.js 2>/dev/null || true
 
-echo "v449" > /etc/sub-sync/module-version
-echo "449" > /etc/sub-sync/module-build
+echo "v450" > /etc/sub-sync/module-version
+echo "450" > /etc/sub-sync/module-build
 
 rm -rf /tmp/luci-* /tmp/luci-indexcache* /tmp/luci-modulecache*
 /etc/init.d/rpcd restart 2>/dev/null || true
