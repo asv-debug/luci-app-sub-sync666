@@ -1,4 +1,5 @@
 /* SUBSYNC_SUBV666_ONLY_V401 */
+/* SUBSYNC_SERVERS_SELECT_REAL_LINK_V407J */
 'use strict';
 /* SUBSYNC_HIDE_UPDATE_CHECK_BUTTON_V269B */
 /* SUBSYNC_HIDE_UPDATE_CHECK_BUTTON_V269 */
@@ -1953,6 +1954,17 @@ function ssHydrateActiveBadgesV28(sec3) {
 if (!serverTable || !sec3 || typeof fs === "undefined") return;
 var rows = serverTable.querySelectorAll(".tr[data-link]");
 var curLinks = activeLinksBySection[sec3] || [];
+                                /* SUBSYNC_SERVERS_ANY_SECTION_ACTIVE_BUTTON_V407U */
+                                try {
+                                        var allLinksV407U = curLinks.slice();
+                                        Object.keys(activeLinksBySection || {}).forEach(function(k407u) {
+                                                (activeLinksBySection[k407u] || []).forEach(function(l407u) {
+                                                        if (!ssLinkInListV28(l407u, allLinksV407U))
+                                                                allLinksV407U.push(l407u);
+                                                });
+                                        });
+                                        curLinks = allLinksV407U;
+                                } catch(e407u) {}
 for (var i = 0; i < rows.length; i++) {
 (function(row) {
 var btn = row.querySelector("button[data-idx]");
@@ -4185,6 +4197,17 @@ btn.dataset.link = ssNormLinkV28(link2 || btn.dataset.link || "");
 			function syncAllBtnStates(sec3) {
 				if (!serverTable) return;
 				var curLinks = activeLinksBySection[sec3] || [];
+                                /* SUBSYNC_SERVERS_ANY_SECTION_ACTIVE_BUTTON_V407U */
+                                try {
+                                        var allLinksV407U = curLinks.slice();
+                                        Object.keys(activeLinksBySection || {}).forEach(function(k407u) {
+                                                (activeLinksBySection[k407u] || []).forEach(function(l407u) {
+                                                        if (!ssLinkInListV28(l407u, allLinksV407U))
+                                                                allLinksV407U.push(l407u);
+                                                });
+                                        });
+                                        curLinks = allLinksV407U;
+                                } catch(e407u) {}
 
 				var rows = serverTable.querySelectorAll('.tr[data-link]');
 				for (var ri2 = 0; ri2 < rows.length; ri2++) {
@@ -4225,7 +4248,7 @@ var isAct = ssLinkInListV28(rowLink, curLinks);
 				var selectBtn = E('button', {
 					'class': 'cbi-button cbi-button-action',
 					'style': 'padding:2px 6px;font-size:11px;min-width:62px',
-					'data-selected': '0', 'data-link': '', 'data-idx': String(s.id || idx), 'data-xhttp': isXhttp ? '1' : '0',
+                                                'data-link': ssNormLinkV28(s.link || ''),
 					'click': function(ev) {
 						var btn = ev.currentTarget || ev.target;
                             var btnXhttpUrlTest = btn.dataset.urltest === '1';
@@ -4275,8 +4298,9 @@ var savedLink = btn.dataset.link || (btn.closest(".tr") ? btn.closest(".tr").dat
 
 						btn.disabled = true; btn.textContent = '...';
 
-						fs.exec('/usr/bin/sub-sync', ['link', String(s.id || idx)]).then(function(res) {
-							var link2 = (res.stdout || '').trim();
+                                                /* SUBSYNC_SERVERS_NATIVE_SELECT_DATALINK_V407M */
+                                                Promise.resolve(btn.dataset.link || ssNormLinkV28(s.link || '' )).then(function(link2) {
+                                                        link2 = ssNormLinkV28(link2 || '' );
 
 							if (!link2 || link2.indexOf('://') === -1) {
 								ui.addNotification(null, E('p', {}, 'Не удалось получить ссылку сервера'), 'danger');
@@ -4348,6 +4372,13 @@ if (!ssLinkInListV28(link2, myLinks)) {
 				}
 
 
+                                /* SUBSYNC_SERVERS_CREATE_ANY_ACTIVE_V407U */
+                                try {
+                                        Object.keys(activeLinksBySection || {}).forEach(function(k407u) {
+                                                if (ssLinkInListV28(s.link || '', activeLinksBySection[k407u] || []))
+                                                        isActive = true;
+                                        });
+                                } catch(e407u2) {}
 				if (isActive && !xhttpNoSupport) {
 					markBtnSelected(selectBtn, s.link || '');
 				}
@@ -7129,8 +7160,7 @@ function createSubSyncDashboardV403(section) {
                                 'style': 'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px'
                         }, [
                                 E('div', {}, [
-                                        E('div', { 'class': 'ss-card__title' }, 'Дашборд Podcop Sub v666'),
-                                        E('div', { 'style': 'font-size:12px;opacity:.75' }, 'Удаление: нажми «Удалить» у нужных серверов → затем жди около 5-10сек, страница сама перезагрузится.')
+                                        E('div', { 'class': 'ss-card__title' }, 'Как удалять серверы: выбери галочки → Удалить выбранные → Сохранить/применить → жди перезапуск страницы.'),
                                 ]),
                                 refresh
                         ]),
@@ -7191,6 +7221,15 @@ function createSubSyncDashboardV403(section) {
                         var del = E('button', {
                                 'style': 'color:#f44336;background:transparent;border:1px solid #f44336;border-radius:6px;font-size:11px;cursor:pointer;padding:2px 8px',
                                 'title': 'Удалить сервер',
+                                        /* SUBSYNC_DELETE_BUTTON_DATA_V407C */
+                                        'data-link': String(s.link || ''),
+                                        'data-id': String(s.id || ''),
+                                        'data-section': String(s.section || ''),
+                                        'data-section-type': String(s.section_type || ''),
+                                        'data-code': String(s.code || ''),
+                                        'data-addr': String(s.addr || ''),
+                                        'data-port': String(s.port || ''),
+                                        'data-name': String(s.name || ''),
                                 'click': function(ev) {
                                         ev.preventDefault();
                                         ev.stopPropagation();
@@ -7202,7 +7241,7 @@ function createSubSyncDashboardV403(section) {
                                         del.disabled = true;
                                         del.textContent = '…';
 
-                                        fs.exec('/usr/bin/sub-sync', ['delete-server-active', String(s.link || ''), String(s.id || ''), String(s.section || ''), String(s.code || ''), String(s.addr || ''), String(s.port || ''), String(s.name || '')]).then(function(res) {
+                                        fs.exec('/usr/bin/sub-sync', ['stage-delete-active', String(s.link || ''), String(s.id || ''), String(s.section || ''), String(s.code || ''), String(s.addr || ''), String(s.port || ''), String(s.name || '')]).then(function(res) {
                                                 var out = (res.stdout || '').trim();
                                                 try {
                                                         var d = JSON.parse(out || '{}');
@@ -7314,6 +7353,388 @@ function createSubSyncDashboardV403(section) {
                                                 cards.appendChild(makeCard(sec.servers[j], load));
 
                                         grid.appendChild(box);
+                                        /* SUBSYNC_DASHBOARD_BULK_DELETE_PANEL_V407D */
+                                        (function(gridRef) {
+                                                function ensureStyleV407D() {
+                                                        if (document.getElementById('ss-dash-v407d-style'))
+                                                                return;
+
+                                                        var st = document.createElement('style');
+                                                        st.id = 'ss-dash-v407d-style';
+                                                        st.textContent =
+                                                                '.ss-dash-server-card-v407d{' +
+                                                                        'background:transparent!important;' +
+                                                                        'border-color:rgba(127,127,127,.28)!important;' +
+                                                                        'box-shadow:none!important;' +
+                                                                '}' +
+                                                                '.ss-dash-delete-row-v407d{' +
+                                                                        'display:inline-flex!important;' +
+                                                                        'align-items:center!important;' +
+                                                                        'gap:6px!important;' +
+                                                                        'vertical-align:middle!important;' +
+                                                                '}' +
+                                                                '.ss-dash-check-v407d{' +
+                                                                        'width:16px!important;' +
+                                                                        'height:16px!important;' +
+                                                                        'margin:0 2px 0 0!important;' +
+                                                                        'cursor:pointer!important;' +
+                                                                        'vertical-align:middle!important;' +
+                                                                '}';
+                                                        document.head.appendChild(st);
+                                                }
+
+                                                function findCardV407D(el) {
+                                                        var n = el;
+                                                        for (var i = 0; i < 10 && n; i++, n = n.parentNode) {
+                                                                if (n.querySelector && n.querySelector('.ss-dash-ping-v403'))
+                                                                        return n;
+                                                        }
+                                                        return el.parentNode;
+                                                }
+
+                                                function cleanupOldV407D() {
+                                                        var oldPanels = gridRef.querySelectorAll('.ss-dash-bulk-panel-v407c,.ss-dash-apply-v407,.ss-dash-apply-v407c');
+                                                        for (var i = 0; i < oldPanels.length; i++)
+                                                                if (oldPanels[i] && oldPanels[i].parentNode)
+                                                                        oldPanels[i].parentNode.removeChild(oldPanels[i]);
+
+                                                        var all = gridRef.querySelectorAll('div,span');
+                                                        for (var j = 0; j < all.length; j++) {
+                                                                var t = (all[j].textContent || '').trim();
+                                                                if (t.indexOf('Удаление: нажми') === 0 && all[j].parentNode)
+                                                                        all[j].parentNode.removeChild(all[j]);
+                                                        }
+                                                }
+
+                                                function enhanceCardsV407D() {
+                                                        var buttons = gridRef.querySelectorAll('button[title="Удалить сервер"]');
+
+                                                        for (var i = 0; i < buttons.length; i++) {
+                                                                var btn = buttons[i];
+                                                                var card = findCardV407D(btn);
+
+                                                                if (card && card.classList)
+                                                                        card.classList.add('ss-dash-server-card-v407d');
+
+                                                                if (btn.getAttribute('data-check-v407d') === '1')
+                                                                        continue;
+
+                                                                btn.setAttribute('data-check-v407d', '1');
+
+                                                                var row = btn.parentNode;
+                                                                if (row && row.classList)
+                                                                        row.classList.add('ss-dash-delete-row-v407d');
+
+                                                                var cb = E('input', {
+                                                                        'type': 'checkbox',
+                                                                        'class': 'ss-dash-check-v407d',
+                                                                        'title': 'Выбрать для удаления'
+                                                                });
+
+                                                                cb.addEventListener('click', function(ev) {
+                                                                        ev.stopPropagation();
+                                                                });
+
+                                                                if (btn.parentNode)
+                                                                        btn.parentNode.insertBefore(cb, btn);
+                                                        }
+                                                }
+
+                                                function ensurePanelV407D() {
+                                                        if (gridRef.querySelector('.ss-dash-bulk-panel-v407d'))
+                                                                return;
+
+                                                        var panel = E('div', {
+                                                                'class': 'ss-dash-bulk-panel-v407d',
+                                                                'style': 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 12px 0'
+                                                        });
+
+                                                        var delBtn = E('button', {
+                                                                'class': 'cbi-button cbi-button-remove',
+                                                                'style': 'padding:5px 12px;font-size:12px'
+                                                        }, 'Удалить выбранные');
+
+                                                        var applyBtn = E('button', {
+                                                                'class': 'cbi-button cbi-button-positive',
+                                                                'style': 'padding:5px 12px;font-size:12px'
+                                                        }, 'Сохранить/применить');
+
+                                                        delBtn.addEventListener('click', function() {
+                                                                var checks = Array.prototype.slice.call(gridRef.querySelectorAll('.ss-dash-check-v407d:checked'));
+
+                                                                if (!checks.length) {
+                                                                        window.alert('Сначала отметь серверы галочками');
+                                                                        return;
+                                                                }
+
+                                                                if (!window.confirm('Удалить выбранные серверы: ' + checks.length + '?'))
+                                                                        return;
+
+                                                                delBtn.disabled = true;
+                                                                delBtn.textContent = 'Удаляем... 0/' + checks.length;
+
+                                                                var errors = 0;
+
+                                                                function next(i) {
+                                                                        if (i >= checks.length) {
+                                                                                delBtn.disabled = false;
+                                                                                delBtn.textContent = errors ? ('Удалено с ошибками: ' + errors) : 'Удалено выбранное';
+                                                                                return;
+                                                                        }
+
+                                                                        var cb = checks[i];
+                                                                        var card = findCardV407D(cb);
+                                                                        var btn = card && card.querySelector ? card.querySelector('button[title="Удалить сервер"]') : null;
+
+                                                                        if (!btn) {
+                                                                                errors++;
+                                                                                next(i + 1);
+                                                                                return;
+                                                                        }
+
+                                                                        delBtn.textContent = 'Удаляем... ' + (i + 1) + '/' + checks.length;
+
+                                                                        fs.exec('/usr/bin/sub-sync', [
+                                                                                'stage-delete-active',
+                                                                                btn.getAttribute('data-link') || '',
+                                                                                btn.getAttribute('data-id') || '',
+                                                                                btn.getAttribute('data-section') || '',
+                                                                                btn.getAttribute('data-code') || '',
+                                                                                btn.getAttribute('data-addr') || '',
+                                                                                btn.getAttribute('data-port') || '',
+                                                                                btn.getAttribute('data-name') || ''
+                                                                        ]).then(function() {
+                                                                                cb.checked = false;
+                                                                                if (card) {
+                                                                                        card.style.opacity = '.42';
+                                                                                        card.style.pointerEvents = 'none';
+                                                                                        card.style.background = '';
+                                                                                        card.style.borderColor = '';
+                                                                                        card.style.boxShadow = '';
+                                                                                }
+                                                                                next(i + 1);
+                                                                        }).catch(function(e) {
+                                                                                errors++;
+                                                                                next(i + 1);
+                                                                        });
+                                                                }
+
+                                                                next(0);
+                                                        });
+
+                                                        applyBtn.addEventListener('click', function() {
+                                                                if (applyBtn.disabled)
+                                                                        return;
+
+                                                                applyBtn.disabled = true;
+                                                                applyBtn.textContent = 'Применяем...';
+
+                                                                fs.exec('/usr/bin/sub-sync', ['apply-delete-active']).then(function() {
+                                                                        applyBtn.textContent = 'Готово, перезагрузка страницы...';
+                                                                        window.setTimeout(function() {
+                                                                                window.location.reload();
+                                                                        }, 7000);
+                                                                }).catch(function(e) {
+                                                                        applyBtn.disabled = false;
+                                                                        applyBtn.textContent = 'Сохранить/применить';
+                                                                        window.alert('Ошибка применения: ' + e);
+                                                                });
+                                                        });
+
+                                                        panel.appendChild(delBtn);
+                                                        panel.appendChild(applyBtn);
+                                                        gridRef.insertBefore(panel, gridRef.firstChild);
+                                                }
+
+                                                function runV407D() {
+                                                        ensureStyleV407D();
+                                                        cleanupOldV407D();
+                                                        enhanceCardsV407D();
+                                                        ensurePanelV407D();
+                                                }
+
+                                                runV407D();
+                                                window.setTimeout(runV407D, 200);
+                                                window.setTimeout(runV407D, 800);
+                                                /* SUBSYNC_DASHBOARD_SINGLE_CHECKBOX_SECTION_TYPE_V407E */
+                                                function polishSingleCheckboxV407E() {
+                                                        var styleId = 'ss-dash-v407e-style';
+                                                        if (!document.getElementById(styleId)) {
+                                                                var st = document.createElement('style');
+                                                                st.id = styleId;
+                                                                st.textContent =
+                                                                        '.ss-dash-check-v407c{display:none!important}' +
+                                                                        '.ss-dash-bulk-panel-v407c,.ss-dash-apply-v407,.ss-dash-apply-v407c{display:none!important}' +
+                                                                        '.ss-dash-delete-row-v407d{display:inline-flex!important;align-items:center!important;gap:6px!important;vertical-align:middle!important}' +
+                                                                        '.ss-dash-check-v407d{width:16px!important;height:16px!important;margin:0!important;cursor:pointer!important;vertical-align:middle!important}' +
+                                                                        '.ss-dash-server-card-v407d{background:transparent!important;border-color:rgba(127,127,127,.28)!important;box-shadow:none!important}' +
+                                                                        '.ss-section-type-v407e{opacity:.7!important;font-size:12px!important;margin-left:7px!important;font-weight:400!important}';
+                                                                document.head.appendChild(st);
+                                                        }
+
+                                                        var old = gridRef.querySelectorAll('.ss-dash-check-v407c,.ss-dash-bulk-panel-v407c,.ss-dash-apply-v407,.ss-dash-apply-v407c');
+                                                        for (var o = 0; o < old.length; o++)
+                                                                if (old[o] && old[o].parentNode)
+                                                                        old[o].parentNode.removeChild(old[o]);
+
+                                                        var btns = gridRef.querySelectorAll('button[title="Удалить сервер"]');
+                                                        var sectionTypes = {};
+
+                                                        for (var i = 0; i < btns.length; i++) {
+                                                                var btn = btns[i];
+                                                                var row = btn.parentNode;
+                                                                var sec = btn.getAttribute('data-section') || '';
+                                                                var typ = btn.getAttribute('data-section-type') || '';
+
+                                                                if (sec && typ)
+                                                                        sectionTypes[sec] = typ;
+
+                                                                if (row && row.classList)
+                                                                        row.classList.add('ss-dash-delete-row-v407d');
+
+                                                                if (row && row.querySelectorAll) {
+                                                                        var checks = row.querySelectorAll('input[type="checkbox"]');
+
+                                                                        for (var c = 0; c < checks.length; c++) {
+                                                                                if (!checks[c].classList.contains('ss-dash-check-v407d') && checks[c].parentNode)
+                                                                                        checks[c].parentNode.removeChild(checks[c]);
+                                                                        }
+
+                                                                        if (!row.querySelector('.ss-dash-check-v407d')) {
+                                                                                var cb = E('input', {
+                                                                                        'type': 'checkbox',
+                                                                                        'class': 'ss-dash-check-v407d',
+                                                                                        'title': 'Выбрать для удаления'
+                                                                                });
+                                                                                cb.addEventListener('click', function(ev) { ev.stopPropagation(); });
+                                                                                row.insertBefore(cb, btn);
+                                                                        }
+                                                                }
+
+                                                                var card = btn;
+                                                                for (var k = 0; k < 10 && card; k++, card = card.parentNode) {
+                                                                        if (card.querySelector && card.querySelector('.ss-dash-ping-v403')) {
+                                                                                card.classList.add('ss-dash-server-card-v407d');
+                                                                                card.style.background = '';
+                                                                                card.style.borderColor = '';
+                                                                                card.style.boxShadow = '';
+                                                                                break;
+                                                                        }
+                                                                }
+                                                        }
+
+                                                        var typeRe = /^(outbound|urltest|selector|url)$/i;
+
+                                                        var spans = gridRef.querySelectorAll('span');
+                                                        for (var s = 0; s < spans.length; s++) {
+                                                                var txt = (spans[s].textContent || '').trim();
+                                                                if (typeRe.test(txt) && !spans[s].classList.contains('ss-section-type-v407e'))
+                                                                        spans[s].style.display = 'none';
+                                                        }
+
+                                                        var elems = gridRef.querySelectorAll('h1,h2,h3,h4,h5,b,strong,div,span');
+                                                        Object.keys(sectionTypes).forEach(function(secName) {
+                                                                for (var e = 0; e < elems.length; e++) {
+                                                                        var el = elems[e];
+                                                                        if (!el || !el.textContent)
+                                                                                continue;
+
+                                                                        if ((el.textContent || '').trim() === secName) {
+                                                                                if (!el.querySelector || !el.querySelector('.ss-section-type-v407e')) {
+                                                                                        el.appendChild(E('span', {
+                                                                                                'class': 'ss-section-type-v407e',
+                                                                                                'style': 'opacity:.7;font-size:12px;margin-left:7px'
+                                                                                        }, sectionTypes[secName]));
+                                                                                }
+                                                                                break;
+                                                                        }
+                                                                }
+                                                        });
+                                                }
+
+                                                polishSingleCheckboxV407E();
+                                                window.setTimeout(polishSingleCheckboxV407E, 150);
+                                                window.setTimeout(polishSingleCheckboxV407E, 700);
+                                                window.setTimeout(polishSingleCheckboxV407E, 1500);
+                                                /* SUBSYNC_DASHBOARD_DELETE_RED_CROSS_V407F */
+                                                function polishDeleteRedCrossV407F() {
+                                                        var styleId = 'ss-dash-v407f-red-cross-style';
+                                                        if (!document.getElementById(styleId)) {
+                                                                var st = document.createElement('style');
+                                                                st.id = styleId;
+                                                                st.textContent =
+                                                                        '.ss-dash-delete-x-v407f{' +
+                                                                                'color:#ff4d4f!important;' +
+                                                                                'border-color:#ff4d4f!important;' +
+                                                                                'background:rgba(244,67,54,.08)!important;' +
+                                                                                'font-weight:900!important;' +
+                                                                                'font-size:15px!important;' +
+                                                                                'min-width:30px!important;' +
+                                                                                'height:24px!important;' +
+                                                                                'padding:0 8px!important;' +
+                                                                                'line-height:20px!important;' +
+                                                                                'text-align:center!important;' +
+                                                                        '}';
+                                                                document.head.appendChild(st);
+                                                        }
+
+                                                        var btns = gridRef.querySelectorAll('button[title="Удалить сервер"]');
+                                                        for (var i = 0; i < btns.length; i++) {
+                                                                btns[i].classList.add('ss-dash-delete-x-v407f');
+                                                                btns[i].textContent = '✕';
+                                                                btns[i].setAttribute('aria-label', 'Удалить сервер');
+                                                        }
+                                                }
+
+                                                polishDeleteRedCrossV407F();
+                                                window.setTimeout(polishDeleteRedCrossV407F, 150);
+                                                window.setTimeout(polishDeleteRedCrossV407F, 700);
+                                                window.setTimeout(polishDeleteRedCrossV407F, 1500);
+                                                /* SUBSYNC_DASHBOARD_DELETE_SMALL_X_V407G */
+                                                function polishSmallDeleteXV407G() {
+                                                        var styleId = 'ss-dash-v407g-small-x-style';
+                                                        if (!document.getElementById(styleId)) {
+                                                                var st = document.createElement('style');
+                                                                st.id = styleId;
+                                                                st.textContent =
+                                                                        '.ss-dash-delete-x-v407f,.ss-dash-delete-x-v407g{' +
+                                                                                'width:16px!important;' +
+                                                                                'min-width:16px!important;' +
+                                                                                'max-width:16px!important;' +
+                                                                                'height:16px!important;' +
+                                                                                'min-height:16px!important;' +
+                                                                                'max-height:16px!important;' +
+                                                                                'padding:0!important;' +
+                                                                                'margin:0!important;' +
+                                                                                'font-size:11px!important;' +
+                                                                                'line-height:14px!important;' +
+                                                                                'display:inline-flex!important;' +
+                                                                                'align-items:center!important;' +
+                                                                                'justify-content:center!important;' +
+                                                                                'color:#ff4d4f!important;' +
+                                                                                'border:1px solid #ff4d4f!important;' +
+                                                                                'border-radius:3px!important;' +
+                                                                                'background:rgba(244,67,54,.08)!important;' +
+                                                                                'font-weight:900!important;' +
+                                                                                'box-sizing:border-box!important;' +
+                                                                        '}';
+                                                                document.head.appendChild(st);
+                                                        }
+
+                                                        var btns = gridRef.querySelectorAll('button[title="Удалить сервер"]');
+                                                        for (var i = 0; i < btns.length; i++) {
+                                                                btns[i].classList.remove('cbi-button-remove');
+                                                                btns[i].classList.add('ss-dash-delete-x-v407g');
+                                                                btns[i].textContent = '×';
+                                                                btns[i].setAttribute('aria-label', 'Удалить сервер');
+                                                        }
+                                                }
+
+                                                polishSmallDeleteXV407G();
+                                                window.setTimeout(polishSmallDeleteXV407G, 150);
+                                                window.setTimeout(polishSmallDeleteXV407G, 700);
+                                                window.setTimeout(polishSmallDeleteXV407G, 1500);
+                                        })(grid);
                                         /* SUBSYNC_DASHBOARD_AUTO_PING_V403C */
                                         window.setTimeout((function(boxRef) {
                                                 return function() {
@@ -7338,6 +7759,64 @@ function createSubSyncDashboardV403(section) {
                 return root;
         };
 }
+/* SUBSYNC_DASHBOARD_PING_COLORS_BROAD_V407W */
+(function() {
+        if (window.__subsyncDashboardPingColorsBroadV407W)
+                return;
+        window.__subsyncDashboardPingColorsBroadV407W = true;
+
+        function colorByPingV407W(ms) {
+                if (ms <= 500)
+                        return '#4caf50';
+                if (ms <= 1000)
+                        return '#ffc107';
+                return '#f44336';
+        }
+
+        function applyPingColorsV407W() {
+                var root = document.querySelector('.cbi-map') || document.body;
+                var nodes = root.querySelectorAll('span,div,td');
+
+                for (var i = 0; i < nodes.length; i++) {
+                        var el = nodes[i];
+                        var text = (el.textContent || '').trim();
+
+                        if (!/^([0-9]{1,5})ms$/.test(text) && text !== 'N/A')
+                                continue;
+
+                        if (text === 'N/A') {
+                                el.style.setProperty('color', '#9aa0aa', 'important');
+                                el.style.setProperty('font-weight', '600', 'important');
+                                continue;
+                        }
+
+                        var ms = parseInt(text.replace('ms', ''), 10);
+                        var color = colorByPingV407W(ms);
+
+                        el.style.setProperty('color', color, 'important');
+                        el.style.setProperty('font-weight', '800', 'important');
+                        el.setAttribute('data-ping-color-v407w', String(ms));
+                }
+        }
+
+        applyPingColorsV407W();
+        window.setTimeout(applyPingColorsV407W, 200);
+        window.setTimeout(applyPingColorsV407W, 800);
+        window.setTimeout(applyPingColorsV407W, 1600);
+        window.setInterval(applyPingColorsV407W, 1000);
+
+        try {
+                new MutationObserver(applyPingColorsV407W).observe(document.body, {
+                        childList: true,
+                        subtree: true,
+                        characterData: true
+                });
+        } catch(e) {}
+})();
+/* SUBSYNC_HIDE_DASHBOARD_H3_V407AD */
+var st407ad = document.createElement('style');
+st407ad.textContent = '.cbi-section h3:first-child{display:none!important;}';
+document.head.appendChild(st407ad);
 return view.extend({
 	render: function() {
 		injectStyles();
