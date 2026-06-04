@@ -1,4 +1,5 @@
 #!/bin/sh
+# SUBSYNC_INSTALL_RETRY_ACCEPT_PUBLIC_BUILD_V449
 # SUBSYNC_SAFE_PODKOP_RESTART_INSTALL_V395_BEGIN
 cat > /usr/bin/podcop-sub-v666-safe-podkop-restart <<'EOSAFE'
 #!/bin/sh
@@ -39,7 +40,7 @@ BASE_URL="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$REPO_REF"
 TMP="/tmp/subsync-install-v402.sh"
 
 echo "========================================="
-echo " Podcop Sub v666 retry installer v402"
+echo " Podcop Sub v666 retry installer v449"
 echo "========================================="
 
 i=1
@@ -53,10 +54,10 @@ while [ "$i" -le 10 ]; do
     exit $?
   fi
 
-  echo "WARN: downloaded install.sh is not verified v402"
+  echo "WARN: downloaded install.sh is not verified public build marker"
   i=$((i + 1))
   sleep 3
 done
 
-echo "ERROR: cannot download verified install.sh v402"
+echo "ERROR: cannot download verified install.sh public build"
 exit 1
