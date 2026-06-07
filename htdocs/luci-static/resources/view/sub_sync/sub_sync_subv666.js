@@ -2398,6 +2398,155 @@ syncAllBtnStates(sec3);
 			}, 'Применить');
 
 			injectStyles();
+            /* SUBSYNC_XHTTP_SAFE_TOGGLE_V456I */
+            try {
+                function ssTxtV456I(n) {
+                    return String((n && n.textContent) || '').replace(/\s+/g, ' ').trim();
+                }
+
+                function ssHasClassV456I(el, cls) {
+                    return !!el && (' ' + String(el.className || '') + ' ').indexOf(' ' + cls + ' ') >= 0;
+                }
+
+                function ssFindXhttpTitleCardV456I() {
+                    var nodes = document.querySelectorAll('.ss-card__title, .ss-card__header, h3, div');
+                    for (var i = 0; i < nodes.length; i++) {
+                        var t = ssTxtV456I(nodes[i]);
+                        if (t.indexOf('xHTTP серверы') !== 0) continue;
+                        if (t.indexOf('Проверить пинг') >= 0) continue;
+                        if (t.indexOf('Секция:') >= 0) continue;
+
+                        var n = nodes[i];
+                        for (var up = 0; up < 8 && n; up++, n = n.parentNode) {
+                            if (ssHasClassV456I(n, 'ss-card')) return n;
+                        }
+                    }
+                    return null;
+                }
+
+                function ssFindXhttpBodyV456I(card) {
+                    var n = card ? card.nextElementSibling : null;
+                    for (var i = 0; i < 8 && n; i++, n = n.nextElementSibling) {
+                        var t = ssTxtV456I(n);
+                        if (t.indexOf('Все Сервера') === 0 || t.indexOf('Автоподбор серверов') === 0) return null;
+                        if (t.indexOf('Проверить пинг') >= 0 || t.indexOf('Секция:') >= 0 || t.indexOf('Серверы ещё не загружены') >= 0) return n;
+                    }
+                    return null;
+                }
+
+                function ssXhttpSafeToggleV456I() {
+                    var card = ssFindXhttpTitleCardV456I();
+                    if (!card) return false;
+
+                    var body = ssFindXhttpBodyV456I(card);
+                    if (!body) return false;
+
+                    var header = card.querySelector('.ss-card__header') || card;
+                    var arrow = card.querySelector('.ss-card__arrow');
+
+                    if (!arrow) {
+                        arrow = document.createElement('span');
+                        arrow.className = 'ss-card__arrow';
+                        arrow.textContent = '▸';
+                        header.appendChild(arrow);
+                    }
+
+                    body.style.display = 'none';
+                    arrow.textContent = '▸';
+                    header.style.setProperty('cursor', 'pointer', 'important');
+
+                    if (card.getAttribute('data-ss-xhttp-safe-toggle-v456i') !== '1') {
+                        var toggle = function(ev) {
+                            if (ev) {
+                                try { ev.preventDefault(); } catch(e) {}
+                                try { ev.stopPropagation(); } catch(e) {}
+                            }
+
+                            var open = body.style.display === 'none';
+                            body.style.display = open ? '' : 'none';
+                            arrow.textContent = open ? '▾' : '▸';
+                            return false;
+                        };
+
+                        header.addEventListener('click', toggle, true);
+                        arrow.addEventListener('click', toggle, true);
+                        card.setAttribute('data-ss-xhttp-safe-toggle-v456i', '1');
+                    }
+
+                    return true;
+                }
+
+                ssXhttpSafeToggleV456I();
+                window.setTimeout(ssXhttpSafeToggleV456I, 300);
+                window.setTimeout(ssXhttpSafeToggleV456I, 1200);
+                window.setTimeout(ssXhttpSafeToggleV456I, 2500);
+                window.setTimeout(ssXhttpSafeToggleV456I, 4000);
+            } catch(e) {}
+
+            /* SUBSYNC_XHTTP_COLOR_ONLY_V456J */
+            try {
+                function ssTxtV456J(n) {
+                    return String((n && n.textContent) || '').replace(/\s+/g, ' ').trim();
+                }
+
+                function ssHasClassV456J(el, cls) {
+                    return !!el && (' ' + String(el.className || '') + ' ').indexOf(' ' + cls + ' ') >= 0;
+                }
+
+                function ssFindXhttpCardV456J() {
+                    var nodes = document.querySelectorAll('.ss-card__title, .ss-card__header, h3, div');
+                    for (var i = 0; i < nodes.length; i++) {
+                        var t = ssTxtV456J(nodes[i]);
+                        if (t.indexOf('xHTTP серверы') !== 0) continue;
+                        if (t.indexOf('Проверить пинг') >= 0) continue;
+                        if (t.indexOf('Секция:') >= 0) continue;
+
+                        var n = nodes[i];
+                        for (var up = 0; up < 8 && n; up++, n = n.parentNode) {
+                            if (ssHasClassV456J(n, 'ss-card')) return n;
+                        }
+                    }
+                    return null;
+                }
+
+                function ssXhttpColorOnlyV456J() {
+                    var card = ssFindXhttpCardV456J();
+                    if (!card) return false;
+
+                    var header = card.querySelector('.ss-card__header') || card;
+
+                    card.style.setProperty('border-left', '0', 'important');
+                    card.style.setProperty('padding-left', '0', 'important');
+
+                    header.style.setProperty('position', 'relative', 'important');
+                    header.style.setProperty('padding-left', '28px', 'important');
+                    header.style.setProperty('box-sizing', 'border-box', 'important');
+
+                    var line = header.querySelector('.ss-xhttp-color-line-v456j');
+                    if (!line) {
+                        line = document.createElement('span');
+                        line.className = 'ss-xhttp-color-line-v456j';
+                        header.insertBefore(line, header.firstChild);
+                    }
+
+                    line.style.setProperty('position', 'absolute', 'important');
+                    line.style.setProperty('left', '14px', 'important');
+                    line.style.setProperty('top', '50%', 'important');
+                    line.style.setProperty('width', '3px', 'important');
+                    line.style.setProperty('height', '22px', 'important');
+                    line.style.setProperty('transform', 'translateY(-50%)', 'important');
+                    line.style.setProperty('background', '#4caf50', 'important');
+                    line.style.setProperty('border-radius', '2px', 'important');
+                    line.style.setProperty('pointer-events', 'none', 'important');
+
+                    return true;
+                }
+
+                ssXhttpColorOnlyV456J();
+                window.setTimeout(ssXhttpColorOnlyV456J, 300);
+                window.setTimeout(ssXhttpColorOnlyV456J, 1200);
+                window.setTimeout(ssXhttpColorOnlyV456J, 2500);
+            } catch(e) {}
             /* SUBSYNC_UPDATE_CHECK_TEXT_RED_V454D */
             try {
                 function ssUpdateCheckTextRedV454D() {
