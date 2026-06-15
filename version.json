@@ -1,8 +1,8 @@
 {
-  "version": "v459",
-  "build": 459,
+  "version": "v460",
+  "build": 460,
   "required_marker": "SUBSYNC_PUBLIC_BUILD_V451",
   "install_url": "https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main/install.sh",
-  "title": "Healthcheck failover installer timeout fix",
-  "message": "Adds automatic server switching and prevents installer downloads from hanging on stalled GitHub Raw connections."
+  "title": "Curl-first installer",
+  "message": "Uses curl before wget to avoid stalled GitHub Raw downloads and adds automatic server failover."
 }

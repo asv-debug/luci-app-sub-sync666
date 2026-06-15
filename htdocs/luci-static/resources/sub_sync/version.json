@@ -1,6 +1,6 @@
 {
-  "version": "v459",
-  "build": 459,
+  "version": "v460",
+  "build": 460,
   "required_marker": "SUBSYNC_PUBLIC_BUILD_V451",
-  "notes": "Healthcheck failover plus timeout downloader: periodically checks a target URL/host and avoids installer hangs on stalled downloads."
+  "notes": "Healthcheck failover plus curl-first timeout downloader to avoid installer hangs on stalled GitHub Raw downloads."
 }

@@ -17,12 +17,12 @@ fetch_to() {
   dst="$1"
   url="$2"
 
-  if command -v wget >/dev/null 2>&1; then
-    wget -q -T 30 -O "$dst" "$url" 2>/dev/null && return 0
-  fi
-
   if command -v curl >/dev/null 2>&1; then
     curl -fsSL --connect-timeout 15 --max-time 60 "$url" -o "$dst" 2>/dev/null && return 0
+  fi
+
+  if command -v wget >/dev/null 2>&1; then
+    wget -q -T 30 -O "$dst" "$url" 2>/dev/null && return 0
   fi
 
   if command -v uclient-fetch >/dev/null 2>&1; then
