@@ -99,7 +99,26 @@ echo "========================================="
 echo "  Podcop Sub v666 — public install v402"
 echo "========================================="
 echo "Backup: disabled for public/friend install"
-echo "Downloader: wget strict direct installer v402"
+echo "Downloader: timeout downloader v459"
+
+fetch_to() {
+  dst="$1"
+  url="$2"
+
+  if command -v wget >/dev/null 2>&1; then
+    wget -T 30 -O "$dst" "$url" 2>/dev/null && return 0
+  fi
+
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL --connect-timeout 15 --max-time 60 "$url" -o "$dst" 2>/dev/null && return 0
+  fi
+
+  if command -v uclient-fetch >/dev/null 2>&1; then
+    uclient-fetch -q -T 30 -O "$dst" "$url" 2>/dev/null && return 0
+  fi
+
+  return 1
+}
 
 dl() {
   rel="$1"
@@ -112,7 +131,7 @@ dl() {
     echo "=== download $rel try $i ==="
     rm -f "$tmp"
 
-    if wget -O "$tmp" "$RAW_BASE/$rel?v=$(date +%s)-$i"; then
+    if fetch_to "$tmp" "$RAW_BASE/$rel?v=$(date +%s)-$i"; then
       if [ -s "$tmp" ]; then
         mv "$tmp" "$dst"
         return 0
@@ -320,7 +339,7 @@ subsync_dl_helper_v435() {
   _dst="/usr/bin/$_name"
   _url="$SUBSYNC_RAW_BASE_V435/usr/bin/$_name?v=$(date +%s)"
   echo "install helper $_name"
-  wget -qO "$_dst" "$_url" 2>/dev/null || curl -fsSL "$_url" -o "$_dst" 2>/dev/null || {
+  fetch_to "$_dst" "$_url" || {
     echo "ERROR: failed to download $_name"
     exit 1
   }
@@ -338,7 +357,7 @@ subsync_install_helper_v448() {
   tmp="${dst}.tmp.$$"
   rm -f "$tmp"
   echo "install helper v448 $rel"
-  wget -q -O "$tmp" "$url" 2>/dev/null || uclient-fetch -q -O "$tmp" "$url" 2>/dev/null || { rm -f "$tmp"; echo "WARN: helper v448 download failed $rel"; return 1; }
+  fetch_to "$tmp" "$url" || { rm -f "$tmp"; echo "WARN: helper v448 download failed $rel"; return 1; }
   [ -s "$tmp" ] || { rm -f "$tmp"; echo "WARN: helper v448 empty $rel"; return 1; }
   mv "$tmp" "$dst" || { rm -f "$tmp"; echo "WARN: helper v448 move failed $dst"; return 1; }
   chmod +x "$dst" 2>/dev/null || true
@@ -352,8 +371,8 @@ subsync_install_helper_v448 usr/bin/sub-sync-delete-server /usr/bin/sub-sync-del
 chmod +x /usr/bin/sub-sync /usr/bin/sub-sync-subs-info /usr/bin/sub-sync-subs-info.real-v444 /usr/bin/sub-sync-dashboard-v403 /usr/bin/sub-sync-dashboard-ping-v403 /usr/bin/sub-sync-delete-server 2>/dev/null || true
 # SUBSYNC_INSTALL_DASHBOARD_FIX_HELPERS_V448_END
 
-echo "v458" > /etc/sub-sync/module-version
-echo "458" > /etc/sub-sync/module-build
+echo "v459" > /etc/sub-sync/module-version
+echo "459" > /etc/sub-sync/module-build
 
 echo "=== apply Podkop xHTTP patch ==="
 if [ -x /usr/bin/podcop-sub-v666-xhttp-patch ]; then
@@ -394,12 +413,12 @@ echo "=== install delete purge helper v331/v332 ==="
 
 # SUBSYNC_INSTALL_TXT_HELPERS_V358_BEGIN
 RAW_BASE="${RAW_BASE:-https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main}"
-wget -O /usr/bin/sub-sync-txt-v348 "$RAW_BASE/usr/bin/sub-sync-txt-v348?v=$(date +%s)" || true
-wget -O /usr/bin/sub-sync-txt-delete-v355 "$RAW_BASE/usr/bin/sub-sync-txt-delete-v355?v=$(date +%s)" || true
+fetch_to /usr/bin/sub-sync-txt-v348 "$RAW_BASE/usr/bin/sub-sync-txt-v348?v=$(date +%s)" || true
+fetch_to /usr/bin/sub-sync-txt-delete-v355 "$RAW_BASE/usr/bin/sub-sync-txt-delete-v355?v=$(date +%s)" || true
 chmod +x /usr/bin/sub-sync-txt-v348 /usr/bin/sub-sync-txt-delete-v355 2>/dev/null || true
 # SUBSYNC_INSTALL_TXT_HELPERS_V358_END
 SUBSYNC_RAW_BASE="https://raw.githubusercontent.com/${REPO_OWNER:-kzolotarev95}/${REPO_NAME:-luci-app-sub-sync666}/${REPO_REF:-main}"
-wget -O /usr/bin/sub-sync-delete-purge-active-v331 "$SUBSYNC_RAW_BASE/usr/bin/sub-sync-delete-purge-active-v331?v=$(date +%s)" && chmod +x /usr/bin/sub-sync-delete-purge-active-v331 || echo "WARN: delete purge helper download failed"
+fetch_to /usr/bin/sub-sync-delete-purge-active-v331 "$SUBSYNC_RAW_BASE/usr/bin/sub-sync-delete-purge-active-v331?v=$(date +%s)" && chmod +x /usr/bin/sub-sync-delete-purge-active-v331 || echo "WARN: delete purge helper download failed"
 
 # SUBSYNC_INSTALL_DELETE_PURGE_HELPER_V332_END
 # SUBSYNC_NATIVE_PODKOP_MAIN_JS_403_FIX_V404_BEGIN
@@ -414,17 +433,17 @@ echo "Install Podcop Sub v666 dashboard helpers..."
 BASE_URL="${BASE_URL:-https://raw.githubusercontent.com/${REPO_OWNER:-kzolotarev95}/${REPO_NAME:-luci-app-sub-sync666}/${REPO_REF:-main}}"
 mkdir -p /usr/bin /www/luci-static/resources/view/sub_sync /etc/sub-sync
 
-wget -qO /www/luci-static/resources/view/sub_sync/sub_sync_subv666.js "$BASE_URL/htdocs/luci-static/resources/view/sub_sync/sub_sync_subv666.js" 2>/dev/null || true
+fetch_to /www/luci-static/resources/view/sub_sync/sub_sync_subv666.js "$BASE_URL/htdocs/luci-static/resources/view/sub_sync/sub_sync_subv666.js" || true
 for f in sub-sync sub-sync-delete-server sub-sync-dashboard-v403 sub-sync-dashboard-ping-v403; do
-  wget -qO "/usr/bin/$f" "$BASE_URL/usr/bin/$f" 2>/dev/null && chmod +x "/usr/bin/$f"
+  fetch_to "/usr/bin/$f" "$BASE_URL/usr/bin/$f" && chmod +x "/usr/bin/$f"
 done
 
 chmod 755 /www/luci-static/resources/view 2>/dev/null || true
 chmod 755 /www/luci-static/resources/view/podkop 2>/dev/null || true
 chmod 644 /www/luci-static/resources/view/podkop/main.js 2>/dev/null || true
 
-echo "v458" > /etc/sub-sync/module-version
-echo "458" > /etc/sub-sync/module-build
+echo "v459" > /etc/sub-sync/module-version
+echo "459" > /etc/sub-sync/module-build
 
 rm -rf /tmp/luci-* /tmp/luci-indexcache* /tmp/luci-modulecache*
 /etc/init.d/rpcd restart 2>/dev/null || true

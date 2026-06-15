@@ -13,13 +13,32 @@ echo "========================================="
 echo " Podcop Sub v666 retry installer v450"
 echo "========================================="
 
+fetch_to() {
+  dst="$1"
+  url="$2"
+
+  if command -v wget >/dev/null 2>&1; then
+    wget -q -T 30 -O "$dst" "$url" 2>/dev/null && return 0
+  fi
+
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL --connect-timeout 15 --max-time 60 "$url" -o "$dst" 2>/dev/null && return 0
+  fi
+
+  if command -v uclient-fetch >/dev/null 2>&1; then
+    uclient-fetch -q -T 30 -O "$dst" "$url" 2>/dev/null && return 0
+  fi
+
+  return 1
+}
+
 i=1
 while [ "$i" -le "$TRIES" ]; do
   URL="$BASE/install.sh?v=$(date +%s)-$i"
   echo "--- install download try $i from $BASE ---"
   rm -f "$TMP"
 
-  wget -q -O "$TMP" "$URL" 2>/dev/null || uclient-fetch -q -O "$TMP" "$URL" 2>/dev/null || true
+  fetch_to "$TMP" "$URL" || true
 
   if [ -s "$TMP" ] && grep -q 'SUBSYNC_PUBLIC_BUILD_V[0-9]' "$TMP" && sh -n "$TMP"; then
     echo "OK: install.sh public build downloaded and verified"

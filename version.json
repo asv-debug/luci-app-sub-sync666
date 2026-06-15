@@ -1,8 +1,8 @@
 {
-  "version": "v458",
-  "build": 458,
+  "version": "v459",
+  "build": 459,
   "required_marker": "SUBSYNC_PUBLIC_BUILD_V451",
   "install_url": "https://raw.githubusercontent.com/kzolotarev95/luci-app-sub-sync666/main/install.sh",
-  "title": "Healthcheck failover",
-  "message": "Adds automatic server switching when a routed target URL or host becomes unavailable."
+  "title": "Healthcheck failover installer timeout fix",
+  "message": "Adds automatic server switching and prevents installer downloads from hanging on stalled GitHub Raw connections."
 }

@@ -1,6 +1,6 @@
 {
-  "version": "v458",
-  "build": 458,
+  "version": "v459",
+  "build": 459,
   "required_marker": "SUBSYNC_PUBLIC_BUILD_V451",
-  "notes": "Healthcheck failover: periodically checks a target URL/host and switches Podkop to a reachable subscription server when the target is down."
+  "notes": "Healthcheck failover plus timeout downloader: periodically checks a target URL/host and avoids installer hangs on stalled downloads."
 }

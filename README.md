@@ -7,7 +7,7 @@
   <img alt="OpenWrt" src="https://img.shields.io/badge/OpenWrt-24.10.x-blue?style=for-the-badge">
   <img alt="LuCI" src="https://img.shields.io/badge/LuCI-supported-brightgreen?style=for-the-badge">
   <img alt="Podkop" src="https://img.shields.io/badge/Podkop-integrated-orange?style=for-the-badge">
-  <img alt="Build" src="https://img.shields.io/badge/build-v458-purple?style=for-the-badge">
+  <img alt="Build" src="https://img.shields.io/badge/build-v459-purple?style=for-the-badge">
 </p>
 
 ---
