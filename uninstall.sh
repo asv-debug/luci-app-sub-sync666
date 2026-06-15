@@ -54,6 +54,7 @@ fi
 
 if [ -f /etc/crontabs/root ]; then
   sed -i '\#/usr/bin/podcop-sub-v666-guard#d' /etc/crontabs/root 2>/dev/null || true
+  sed -i '\#/usr/bin/sub-sync-healthcheck run#d' /etc/crontabs/root 2>/dev/null || true
 fi
 /etc/init.d/cron restart >/dev/null 2>&1 || true
 
@@ -64,7 +65,7 @@ rm -rf /www/luci-static/resources/view/sub_sync 2>/dev/null || true
 rm -f /usr/bin/podcop-sub-v666-guard /etc/init.d/podcop-sub-v666-guard 2>/dev/null || true
 rm -f /usr/bin/podcop-sub-v666-xhttp-patch 2>/dev/null || true
 rm -f /usr/bin/sub-sync /usr/bin/sub-sync.real /usr/bin/sub-sync.v51base /usr/bin/sub-sync.v164manualbase 2>/dev/null || true
-rm -f /usr/bin/sub-sync-autoadd /usr/bin/sub-sync-donaters /usr/bin/sub-sync-happ-json-hy2-import 2>/dev/null || true
+rm -f /usr/bin/sub-sync-autoadd /usr/bin/sub-sync-donaters /usr/bin/sub-sync-happ-json-hy2-import /usr/bin/sub-sync-healthcheck 2>/dev/null || true
 rm -f /usr/bin/sub-sync-hy2-manager /usr/bin/sub-sync-hy2-probe /usr/bin/sub-sync-hy2-urltest 2>/dev/null || true
 rm -f /usr/bin/sub-sync-manual-import /usr/bin/sub-sync-manual-link /usr/bin/sub-sync-section 2>/dev/null || true
 rm -f /usr/bin/sub-sync-singbox-log /usr/bin/sub-sync-subs-info /usr/bin/sub-sync-system-info 2>/dev/null || true
@@ -94,6 +95,7 @@ echo "--- stop/disable guard ---"
 echo "--- remove guard from cron ---"
 if [ -f /etc/crontabs/root ]; then
   sed -i '\#/usr/bin/podcop-sub-v666-guard#d' /etc/crontabs/root 2>/dev/null || true
+  sed -i '\#/usr/bin/sub-sync-healthcheck run#d' /etc/crontabs/root 2>/dev/null || true
 fi
 /etc/init.d/cron restart 2>/dev/null || true
 
@@ -111,7 +113,7 @@ echo "--- remove module helpers ---"
 rm -f /usr/bin/podcop-sub-v666-guard /etc/init.d/podcop-sub-v666-guard 2>/dev/null || true
 rm -f /usr/bin/podcop-sub-v666-xhttp-patch 2>/dev/null || true
 rm -f /usr/bin/sub-sync /usr/bin/sub-sync.real /usr/bin/sub-sync.v51base /usr/bin/sub-sync.v164manualbase 2>/dev/null || true
-rm -f /usr/bin/sub-sync-autoadd /usr/bin/sub-sync-donaters /usr/bin/sub-sync-happ-json-hy2-import 2>/dev/null || true
+rm -f /usr/bin/sub-sync-autoadd /usr/bin/sub-sync-donaters /usr/bin/sub-sync-happ-json-hy2-import /usr/bin/sub-sync-healthcheck 2>/dev/null || true
 rm -f /usr/bin/sub-sync-hy2-manager /usr/bin/sub-sync-hy2-probe /usr/bin/sub-sync-hy2-urltest 2>/dev/null || true
 rm -f /usr/bin/sub-sync-manual-import /usr/bin/sub-sync-manual-link /usr/bin/sub-sync-section 2>/dev/null || true
 rm -f /usr/bin/sub-sync-singbox-log /usr/bin/sub-sync-subs-info /usr/bin/sub-sync-system-info 2>/dev/null || true

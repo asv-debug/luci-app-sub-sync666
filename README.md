@@ -7,7 +7,7 @@
   <img alt="OpenWrt" src="https://img.shields.io/badge/OpenWrt-24.10.x-blue?style=for-the-badge">
   <img alt="LuCI" src="https://img.shields.io/badge/LuCI-supported-brightgreen?style=for-the-badge">
   <img alt="Podkop" src="https://img.shields.io/badge/Podkop-integrated-orange?style=for-the-badge">
-  <img alt="Build" src="https://img.shields.io/badge/build-v275-purple?style=for-the-badge">
+  <img alt="Build" src="https://img.shields.io/badge/build-v458-purple?style=for-the-badge">
 </p>
 
 ---
@@ -32,6 +32,7 @@
 - 🧹 Полное удаление без мусора
 - 🧼 Удаление темы, ACL, cron, helpers, `/etc/sub-sync`, LuCI cache
 - 📊 Системные виджеты и статус-блоки
+- 🔄 Автопереключение сервера: проверка URL/хоста и failover на рабочий сервер из подписки
 - 🧠 Guard для восстановления важных патчей
 - 🚫 Без сохранения приватных подписок в GitHub
 
@@ -96,6 +97,7 @@ wget -O /tmp/uninstall-podcop-sub-v666.sh "https://raw.githubusercontent.com/kzo
 /usr/bin/sub-sync
 /usr/bin/sub-sync.real
 /usr/bin/sub-sync-autoadd
+/usr/bin/sub-sync-healthcheck
 /usr/bin/sub-sync-subs-info
 /usr/bin/sub-sync-urltest
 /usr/bin/podcop-sub-v666-xhttp-patch
@@ -115,6 +117,31 @@ wget -O /tmp/uninstall-podcop-sub-v666.sh "https://raw.githubusercontent.com/kzo
 ```text
 /www/luci-static/proton2025
 ```
+
+</details>
+
+---
+
+<details>
+<summary>🔄 Автопереключение сервера</summary>
+
+После установки в LuCI появится блок **Автопереключение сервера**. Он периодически проверяет заданный URL или хост, например домен из списков Podkop. Если цель недоступна несколько проверок подряд, модуль проверяет серверы из загруженных подписок, пропускает текущий активный сервер и применяет лучший доступный сервер в выбранную секцию Podkop.
+
+CLI-пример:
+
+```sh
+/usr/bin/sub-sync-healthcheck config-set 1 main replace 5 https://www.gstatic.com/generate_204 2 8 1200 25 0
+/usr/bin/sub-sync-healthcheck run force
+/usr/bin/sub-sync-healthcheck status
+```
+
+Параметры `config-set`:
+
+```text
+enabled section mode interval_minutes target fail_threshold timeout_seconds max_ping_ms server_limit sync_before_switch
+```
+
+Рекомендуемый режим для реального переключения — `replace`.
 
 </details>
 

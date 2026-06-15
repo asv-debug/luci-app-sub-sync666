@@ -30,6 +30,9 @@
         "/usr/bin/sub-sync-happ-json-hy2-import": [
           "exec"
         ],
+        "/usr/bin/sub-sync-healthcheck": [
+          "exec"
+        ],
         "/usr/bin/sub-sync-hy2-manager": [
           "exec"
         ],
@@ -105,6 +108,9 @@
           "exec"
         ],
         "/usr/bin/sub-sync-happ-json-hy2-import": [
+          "exec"
+        ],
+        "/usr/bin/sub-sync-healthcheck": [
           "exec"
         ],
         "/usr/bin/sub-sync-hy2-manager": [

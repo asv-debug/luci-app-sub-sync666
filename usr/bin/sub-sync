@@ -1,6 +1,7 @@
 #!/bin/sh
 # SUBSYNC_FAST_DASH_DELETE_ALIASES_V444_BEGIN
 case "${1:-}" in
+  healthcheck) shift; exec /usr/bin/sub-sync-healthcheck "$@" ;;
   subs-info) exec /usr/bin/sub-sync-subs-info ;;
   dashboard-v403) [ -x /usr/bin/sub-sync-dashboard-v403 ] && exec /usr/bin/sub-sync-dashboard-v403 ;;
   dashboard-ping-v403) shift; [ -x /usr/bin/sub-sync-dashboard-ping-v403 ] && exec /usr/bin/sub-sync-dashboard-ping-v403 "$@" ;;

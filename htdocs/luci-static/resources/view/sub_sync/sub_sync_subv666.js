@@ -5393,6 +5393,170 @@ if (typeof window !== "undefined") window.setTimeout(function() { try { ssHydrat
             ]);
             ssRebuildXhttpCardV2(servers);
 
+            /* SUBSYNC_HEALTHCHECK_FAILOVER_UI_V458 */
+            var healthEnabled = E('input', { type: 'checkbox' });
+            var healthSection = E('select', { style: 'max-width:150px' });
+            var healthMode = E('select', { style: 'max-width:110px' }, [
+                E('option', { value: 'replace' }, 'replace'),
+                E('option', { value: 'append' }, 'append')
+            ]);
+            var healthInterval = E('input', { type: 'number', min: '1', max: '59', value: '5', style: 'width:70px' });
+            var healthTarget = E('input', {
+                type: 'text',
+                value: 'https://www.gstatic.com/generate_204',
+                placeholder: 'https://site-from-podkop-list.example/',
+                style: 'min-width:260px;max-width:100%'
+            });
+            var healthThreshold = E('input', { type: 'number', min: '1', max: '10', value: '2', style: 'width:58px' });
+            var healthTimeout = E('input', { type: 'number', min: '1', max: '30', value: '8', style: 'width:58px' });
+            var healthMaxPing = E('input', { type: 'number', min: '1', max: '10000', value: '1200', style: 'width:76px' });
+            var healthLimit = E('input', { type: 'number', min: '1', max: '200', value: '25', style: 'width:70px' });
+            var healthSync = E('input', { type: 'checkbox' });
+            var healthStatus = E('pre', {
+                style: 'white-space:pre-wrap;word-break:break-word;margin-top:8px;max-height:120px;overflow:auto;font-size:12px'
+            }, 'Healthcheck status not loaded yet.');
+
+            function healthEnsureOption(sel, val) {
+                val = String(val || '');
+                if (!val) return;
+                for (var i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value === val) return;
+                }
+                sel.appendChild(E('option', { value: val }, val));
+            }
+
+            function healthFillSections() {
+                while (healthSection.firstChild) healthSection.removeChild(healthSection.firstChild);
+                if (sections && sections.length) {
+                    for (var i = 0; i < sections.length; i++) {
+                        if (sections[i] && sections[i].name)
+                            healthSection.appendChild(E('option', { value: sections[i].name }, sections[i].name));
+                    }
+                }
+                healthEnsureOption(healthSection, 'main');
+                healthSection.value = healthSection.querySelector('option[value="main"]') ? 'main' : healthSection.options[0].value;
+            }
+
+            function healthParse(out, fallback) {
+                try { return JSON.parse(String(out || '').trim() || fallback); }
+                catch(e) { return JSON.parse(fallback); }
+            }
+
+            function healthRenderState(st) {
+                var lines = [];
+                lines.push('status: ' + (st.status || 'unknown'));
+                if (st.message) lines.push('message: ' + st.message);
+                if (st.time) lines.push('time: ' + st.time);
+                if (st.target) lines.push('target: ' + st.target);
+                if (st.section) lines.push('section: ' + st.section);
+                lines.push('fail_count: ' + (st.fail_count || 0));
+                if (st.selected_id) lines.push('selected_id: ' + st.selected_id + ', ping=' + (st.selected_ms || 0) + 'ms');
+                healthStatus.textContent = lines.join('\n');
+            }
+
+            function healthLoad() {
+                fs.exec('/usr/bin/sub-sync-healthcheck', ['config-get']).then(function(r) {
+                    var cfg = healthParse(r.stdout, '{}');
+                    healthEnabled.checked = cfg.enabled === '1' || cfg.enabled === 1;
+                    healthEnsureOption(healthSection, cfg.section || 'main');
+                    healthSection.value = cfg.section || 'main';
+                    healthMode.value = cfg.mode || 'replace';
+                    healthInterval.value = cfg.interval || '5';
+                    healthTarget.value = cfg.target || 'https://www.gstatic.com/generate_204';
+                    healthThreshold.value = cfg.fail_threshold || '2';
+                    healthTimeout.value = cfg.timeout || '8';
+                    healthMaxPing.value = cfg.max_ping || '1200';
+                    healthLimit.value = cfg.limit || '25';
+                    healthSync.checked = cfg.sync_before_switch === '1' || cfg.sync_before_switch === 1;
+                }).catch(function(e) {
+                    healthStatus.textContent = 'Cannot load healthcheck config: ' + (e.message || e);
+                });
+
+                fs.exec('/usr/bin/sub-sync-healthcheck', ['status']).then(function(r) {
+                    healthRenderState(healthParse(r.stdout, '{}'));
+                }).catch(function(e) {
+                    healthStatus.textContent = 'Cannot load healthcheck status: ' + (e.message || e);
+                });
+            }
+
+            function healthSave() {
+                var args = [
+                    'config-set',
+                    healthEnabled.checked ? '1' : '0',
+                    healthSection.value || 'main',
+                    healthMode.value || 'replace',
+                    String(healthInterval.value || '5'),
+                    String(healthTarget.value || 'https://www.gstatic.com/generate_204'),
+                    String(healthThreshold.value || '2'),
+                    String(healthTimeout.value || '8'),
+                    String(healthMaxPing.value || '1200'),
+                    String(healthLimit.value || '25'),
+                    healthSync.checked ? '1' : '0'
+                ];
+
+                healthStatus.textContent = 'Saving healthcheck...';
+                fs.exec('/usr/bin/sub-sync-healthcheck', args).then(function() {
+                    healthStatus.textContent = 'Saved. Cron is ' + (healthEnabled.checked ? 'enabled' : 'disabled') + '.';
+                    window.setTimeout(healthLoad, 400);
+                }).catch(function(e) {
+                    healthStatus.textContent = 'Save failed: ' + (e.message || e);
+                });
+            }
+
+            function healthRunNow() {
+                healthStatus.textContent = 'Running healthcheck...';
+                fs.exec('/usr/bin/sub-sync-healthcheck', ['run', 'force']).then(function() {
+                    window.setTimeout(healthLoad, 400);
+                }).catch(function(e) {
+                    healthStatus.textContent = 'Healthcheck failed: ' + (e.message || e);
+                    window.setTimeout(healthLoad, 700);
+                });
+            }
+
+            function healthSwitchNow() {
+                if (!confirm('Switch Podkop section to the best reachable server now?')) return;
+                healthStatus.textContent = 'Switching server...';
+                fs.exec('/usr/bin/sub-sync-healthcheck', ['switch']).then(function(r) {
+                    healthStatus.textContent = (r.stdout || '').trim() || 'Switched.';
+                    window.setTimeout(healthLoad, 700);
+                }).catch(function(e) {
+                    healthStatus.textContent = 'Switch failed: ' + (e.message || e);
+                });
+            }
+
+            healthFillSections();
+            window.setTimeout(healthLoad, 700);
+
+            var healthCard = E('div', { 'class': 'ss-card', style: 'margin-top:10px;border-left:3px solid #ff9800' }, [
+                E('div', { 'class': 'ss-card__header' }, [
+                    E('div', { 'class': 'ss-card__title' }, 'Автопереключение сервера')
+                ]),
+                E('div', { 'class': 'ss-label', style: 'margin-bottom:10px' },
+                    'Проверяет URL/хост из маршрутизируемых списков Podkop. Если цель недоступна несколько проверок подряд, выбирает доступный сервер из загруженных подписок и применяет его в секцию.'),
+                E('div', { 'class': 'ss-controls' }, [
+                    healthEnabled, E('span', { 'class': 'ss-label' }, 'включено'),
+                    E('span', { 'class': 'ss-label' }, 'секция'), healthSection,
+                    E('span', { 'class': 'ss-label' }, 'режим'), healthMode,
+                    E('span', { 'class': 'ss-label' }, 'каждые мин.'), healthInterval
+                ]),
+                E('div', { 'class': 'ss-controls' }, [
+                    E('span', { 'class': 'ss-label' }, 'что проверять'), healthTarget
+                ]),
+                E('div', { 'class': 'ss-controls' }, [
+                    E('span', { 'class': 'ss-label' }, 'падений до switch'), healthThreshold,
+                    E('span', { 'class': 'ss-label' }, 'timeout сек.'), healthTimeout,
+                    E('span', { 'class': 'ss-label' }, 'макс. ping мс'), healthMaxPing,
+                    E('span', { 'class': 'ss-label' }, 'проверять серверов'), healthLimit
+                ]),
+                E('div', { 'class': 'ss-controls' }, [
+                    healthSync, E('span', { 'class': 'ss-label' }, 'перед переключением обновлять подписки, если кеш пуст'),
+                    E('button', { 'class': 'cbi-button cbi-button-positive', style: 'padding:2px 10px;font-size:12px', click: healthSave }, 'Сохранить'),
+                    E('button', { 'class': 'cbi-button', style: 'padding:2px 10px;font-size:12px', click: healthRunNow }, 'Проверить сейчас'),
+                    E('button', { 'class': 'cbi-button cbi-button-action', style: 'padding:2px 10px;font-size:12px', click: healthSwitchNow }, 'Переключить сейчас')
+                ]),
+                healthStatus
+            ]);
+
 			var ssPage = E('div', { 'class': 'ss-page' }, [
                            E('style', {}, '/* SUBSYNC_AUTOLOGIC_WARNING_BLINK_V59 */ @keyframes ssAutologicWarningBlinkV59{0%,86%,100%{opacity:1;text-shadow:none}90%{opacity:.20;text-shadow:0 0 12px rgba(244,67,54,.95)}94%{opacity:1;text-shadow:0 0 18px rgba(244,67,54,.75)}}'),
                            E('style', {}, [
@@ -6914,7 +7078,7 @@ if (typeof window !== "undefined") window.setTimeout(function() { try { ssHydrat
   }
 }
                            `),
-				donateBannerV257, moduleUpdateCardV338, manualCardV53B, widgetsRow, sysWidgetsRowV96, wServerCard, sectionCreateCardV45B, subsCard, xhttpCard, serversCard, autoPickCard, 
+				donateBannerV257, moduleUpdateCardV338, manualCardV53B, widgetsRow, sysWidgetsRowV96, wServerCard, sectionCreateCardV45B, subsCard, xhttpCard, serversCard, autoPickCard, healthCard,
 				E('div', { 'style': 'text-align:right;margin-top:8px' }, [
                                         E('span', { 'class': 'ss-version ss-version-hidden-v90', 'style': 'display:none!important' }, '')
 				])

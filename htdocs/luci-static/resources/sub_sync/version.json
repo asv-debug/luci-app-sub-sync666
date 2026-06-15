@@ -1,6 +1,6 @@
 {
-  "version": "v392",
-  "build": 392,
-  "required_marker": "SUBSYNC_PUBLIC_BUILD_V392",
-  "notes": "Safe Podkop restart: never start/restart Podkop when no outbound is configured; preserve xHTTP patch and avoid replacing native Podkop init."
+  "version": "v458",
+  "build": 458,
+  "required_marker": "SUBSYNC_PUBLIC_BUILD_V451",
+  "notes": "Healthcheck failover: periodically checks a target URL/host and switches Podkop to a reachable subscription server when the target is down."
 }
